@@ -14,14 +14,17 @@ export interface Product {
 export interface GalleryItem {
   id: string;
   title: string;
+  caption: string;
   category: string;
   imageUrl: string;
+  instagramUrl: string | null;
+  published: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:8080/api';
+  private readonly apiUrl = '/api';
 
   getProducts(): Observable<Product[]> {
     return this.http.get<Product[]>(`${this.apiUrl}/products`);
