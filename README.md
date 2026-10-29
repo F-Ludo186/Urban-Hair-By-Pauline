@@ -53,7 +53,7 @@ Sous PowerShell, `npm.cmd` évite le blocage de la stratégie d’exécution des
 
 ## Administration de la galerie
 
-L’administration est accessible à `http://localhost:4200/admin/login`. Elle permet d’ajouter une réalisation avec sa photo et sa légende, de modifier ses informations ou sa photo, de la publier ou de la garder en brouillon, et de la supprimer. Les commandes sont regroupées dans le menu à gauche.
+L’administration est accessible à `http://localhost:4200/admin/login`. Elle permet d’ajouter une réalisation avec sa photo et sa légende, de modifier ses informations ou sa photo, de la publier ou de la garder en brouillon, et de la supprimer. Les photos peuvent être organisées en groupes titrés : le téléversement de plusieurs images propose un titre à partir de leurs noms, et les photos déjà ajoutées peuvent être sélectionnées ensemble pour créer un groupe. Les groupes sont présentés comme des sections dans la galerie publique ; supprimer un groupe conserve ses photos.
 
 Avant de lancer le backend, configurez un identifiant et un mot de passe réservés à l’administratrice. Dans PowerShell :
 

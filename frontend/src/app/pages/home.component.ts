@@ -24,7 +24,7 @@ import { RouterLink } from '@angular/router';
       <div class="feature-image"><img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1100&q=85" alt="Espace de coiffure accueillant" loading="lazy"></div>
       <div class="feature-copy"><p class="eyebrow">LE SALON</p><h2>Un savoir-faire<br>tout en <em>délicatesse.</em></h2><p>Des conseils personnalisés, des produits soigneusement sélectionnés et une attention portée à chaque détail.</p><a class="button button-dark" routerLink="/boutique">Voir la boutique <span>↗</span></a></div>
     </section>
-    <section class="quote section-wrap"><span class="quote-mark">“</span><blockquote>Parce que se sentir bien dans ses cheveux, c’est déjà se sentir un peu plus soi.</blockquote><p>PAULINE · FONDATRICE</p></section>
+    <section class="quote section-wrap"><span class="quote-mark">“</span><blockquote>Parce que se sentir bien dans ses cheveux, c’est déjà se sentir un peu plus soi.</blockquote><p>PAULINE · FONDATRICE</p><a class="home-admin-link" routerLink="/admin/login">Accès administrateur</a></section>
   `
 })
 export class HomeComponent {}

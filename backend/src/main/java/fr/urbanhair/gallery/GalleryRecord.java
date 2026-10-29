@@ -7,4 +7,7 @@ public record GalleryRecord(
         String category,
         String imageKey,
         String instagramUrl,
-        boolean published) {}
+        boolean published,
+        int sortOrder,
+        String groupId,
+        String groupTitle) {}

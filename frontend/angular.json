@@ -27,7 +27,7 @@
             "styles": ["src/styles.css"]
           },
           "configurations": {
-            "production": { "optimization": true, "outputHashing": "all" },
+            "production": { "optimization": { "scripts": true, "styles": true, "fonts": { "inline": false } }, "outputHashing": "all" },
             "development": { "optimization": false, "sourceMap": true }
           },
           "defaultConfiguration": "production"

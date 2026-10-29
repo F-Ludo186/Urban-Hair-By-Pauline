@@ -19,6 +19,8 @@ export interface GalleryItem {
   imageUrl: string;
   instagramUrl: string | null;
   published: boolean;
+  groupId: string | null;
+  groupTitle: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -10,7 +10,11 @@ export interface AdminGalleryItem {
   imageUrl: string;
   instagramUrl: string | null;
   published: boolean;
+  groupId: string | null;
+  groupTitle: string | null;
 }
+
+export interface AdminGalleryGroup { id: string; title: string; itemCount: number; }
 
 export interface GalleryFormValue {
   title: string;
@@ -18,6 +22,7 @@ export interface GalleryFormValue {
   category: string;
   instagramUrl: string;
   published: boolean;
+  groupId: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -44,6 +49,26 @@ export class AdminService {
     return this.http.get<AdminGalleryItem[]>('/api/admin/gallery');
   }
 
+  getGalleryGroups(): Observable<AdminGalleryGroup[]> {
+    return this.http.get<AdminGalleryGroup[]>('/api/admin/gallery/groups');
+  }
+
+  createGalleryGroup(title: string): Observable<AdminGalleryGroup> {
+    return this.http.post<AdminGalleryGroup>('/api/admin/gallery/groups', { title });
+  }
+
+  updateGalleryGroup(id: string, title: string): Observable<AdminGalleryGroup> {
+    return this.http.put<AdminGalleryGroup>(`/api/admin/gallery/groups/${encodeURIComponent(id)}`, { title });
+  }
+
+  deleteGalleryGroup(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/gallery/groups/${encodeURIComponent(id)}`);
+  }
+
+  assignGalleryItemsToGroup(id: string, ids: string[]): Observable<void> {
+    return this.http.put<void>(`/api/admin/gallery/groups/${encodeURIComponent(id)}/items`, { ids });
+  }
+
   createGalleryItem(value: GalleryFormValue, image: File): Observable<AdminGalleryItem> {
     return this.http.post<AdminGalleryItem>('/api/admin/gallery', this.toFormData(value, image));
   }
@@ -59,6 +84,10 @@ export class AdminService {
     return this.http.delete<void>(`/api/admin/gallery/${encodeURIComponent(id)}`);
   }
 
+  reorderGallery(ids: string[]): Observable<void> {
+    return this.http.put<void>('/api/admin/gallery/order', { ids });
+  }
+
   private toFormData(value: GalleryFormValue, image?: File): FormData {
     const formData = new FormData();
     formData.append('title', value.title);
@@ -66,6 +95,7 @@ export class AdminService {
     formData.append('category', value.category);
     formData.append('instagramUrl', value.instagramUrl);
     formData.append('published', String(value.published));
+    formData.append('groupId', value.groupId ?? '');
     if (image) {
       formData.append('image', image);
     }
