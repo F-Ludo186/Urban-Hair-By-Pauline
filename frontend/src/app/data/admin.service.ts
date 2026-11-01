@@ -12,9 +12,12 @@ export interface AdminGalleryItem {
   published: boolean;
   groupId: string | null;
   groupTitle: string | null;
+  groupDescription: string | null;
+  groupSortOrder: number;
+  groupCoverItemId: string | null;
 }
 
-export interface AdminGalleryGroup { id: string; title: string; itemCount: number; }
+export interface AdminGalleryGroup { id: string; title: string; description: string; itemCount: number; sortOrder: number; coverItemId: string | null; }
 
 export interface GalleryFormValue {
   title: string;
@@ -53,12 +56,12 @@ export class AdminService {
     return this.http.get<AdminGalleryGroup[]>('/api/admin/gallery/groups');
   }
 
-  createGalleryGroup(title: string): Observable<AdminGalleryGroup> {
-    return this.http.post<AdminGalleryGroup>('/api/admin/gallery/groups', { title });
+  createGalleryGroup(title: string, description = ''): Observable<AdminGalleryGroup> {
+    return this.http.post<AdminGalleryGroup>('/api/admin/gallery/groups', { title, description });
   }
 
-  updateGalleryGroup(id: string, title: string): Observable<AdminGalleryGroup> {
-    return this.http.put<AdminGalleryGroup>(`/api/admin/gallery/groups/${encodeURIComponent(id)}`, { title });
+  updateGalleryGroup(id: string, title: string, description = ''): Observable<AdminGalleryGroup> {
+    return this.http.put<AdminGalleryGroup>(`/api/admin/gallery/groups/${encodeURIComponent(id)}`, { title, description });
   }
 
   deleteGalleryGroup(id: string): Observable<void> {
@@ -86,6 +89,18 @@ export class AdminService {
 
   reorderGallery(ids: string[]): Observable<void> {
     return this.http.put<void>('/api/admin/gallery/order', { ids });
+  }
+
+  reorderGalleryGroups(ids: string[]): Observable<void> {
+    return this.http.put<void>('/api/admin/gallery/groups/order', { ids });
+  }
+
+  setGalleryGroupCover(id: string, itemId: string): Observable<AdminGalleryGroup> {
+    return this.http.put<AdminGalleryGroup>(`/api/admin/gallery/groups/${encodeURIComponent(id)}/cover`, { itemId });
+  }
+
+  reorderGalleryGroupItems(id: string, ids: string[]): Observable<void> {
+    return this.http.put<void>(`/api/admin/gallery/groups/${encodeURIComponent(id)}/items/order`, { ids });
   }
 
   private toFormData(value: GalleryFormValue, image?: File): FormData {

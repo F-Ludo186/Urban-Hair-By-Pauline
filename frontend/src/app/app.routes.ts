@@ -3,6 +3,7 @@ import { HomeComponent } from './pages/home.component';
 import { ShopComponent } from './pages/shop.component';
 import { GalleryComponent } from './pages/gallery.component';
 import { AdminComponent } from './pages/admin.component';
+import { AdminHomeComponent } from './pages/admin-home.component';
 import { AdminLoginComponent } from './pages/admin-login.component';
 import { adminGuard } from './data/admin.guard';
 
@@ -11,6 +12,7 @@ export const routes: Routes = [
   { path: 'boutique', component: ShopComponent, title: 'Boutique — Urban Hair by Pauline' },
   { path: 'galerie', component: GalleryComponent, title: 'Galerie — Urban Hair by Pauline' },
   { path: 'admin/login', component: AdminLoginComponent, title: 'Connexion — Administration' },
-  { path: 'admin', component: AdminComponent, canActivate: [adminGuard], title: 'Administration — Urban Hair by Pauline' },
+  { path: 'admin/galerie', component: AdminComponent, canActivate: [adminGuard], title: 'Gestion de la galerie — Administration' },
+  { path: 'admin', component: AdminHomeComponent, canActivate: [adminGuard], pathMatch: 'full', title: 'Administration — Urban Hair by Pauline' },
   { path: '**', redirectTo: '' }
 ];

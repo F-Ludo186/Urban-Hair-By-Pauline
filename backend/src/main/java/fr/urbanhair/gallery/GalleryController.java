@@ -38,7 +38,7 @@ public class GalleryController {
     }
 
     @GetMapping("/api/gallery/images/{key:.+}")
-    public ResponseEntity<byte[]> getImage(@PathVariable String key) {
+    public ResponseEntity<byte[]> getImage(@PathVariable("key") String key) {
         try {
             return ResponseEntity.ok()
                     .contentType(MediaType.IMAGE_JPEG)
@@ -62,27 +62,48 @@ public class GalleryController {
 
     @PostMapping("/api/admin/gallery/groups")
     public ResponseEntity<GalleryGroup> createGroup(@Valid @RequestBody GalleryGroupRequest request) {
-        GalleryGroup group = new GalleryGroup(UUID.randomUUID().toString(), request.title().trim(), 0);
+        GalleryGroup group = new GalleryGroup(UUID.randomUUID().toString(), request.title().trim(), emptyToNull(request.description()) == null ? "" : request.description().trim(), 0, 0, null);
         repository.insertGroup(group);
-        return ResponseEntity.status(HttpStatus.CREATED).body(group);
+        return ResponseEntity.status(HttpStatus.CREATED).body(findGroup(group.id()));
     }
 
     @PutMapping("/api/admin/gallery/groups/{id}")
-    public GalleryGroup updateGroup(@PathVariable String id, @Valid @RequestBody GalleryGroupRequest request) {
+    public GalleryGroup updateGroup(@PathVariable("id") String id, @Valid @RequestBody GalleryGroupRequest request) {
         GalleryGroup current = findGroup(id);
-        repository.updateGroup(id, request.title().trim());
-        return new GalleryGroup(id, request.title().trim(), current.itemCount());
+        String description = emptyToNull(request.description()) == null ? "" : request.description().trim();
+        repository.updateGroup(id, request.title().trim(), description);
+        return new GalleryGroup(id, request.title().trim(), description, current.itemCount(), current.sortOrder(), current.coverItemId());
+    }
+
+    @PutMapping("/api/admin/gallery/groups/order")
+    public ResponseEntity<Void> reorderGroups(@RequestBody GalleryOrder order) {
+        if (order == null || order.ids() == null || new HashSet<>(order.ids()).size() != order.ids().size()
+                || !repository.containsAllGroups(order.ids())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "L’ordre transmis ne correspond pas aux groupes.");
+        }
+        repository.reorderGroups(order.ids());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping(value = "/api/admin/gallery/groups/{id}/cover", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public GalleryGroup setGroupCover(@PathVariable("id") String id, @RequestBody GalleryGroupCover request) {
+        GalleryGroup group = findGroup(id);
+        if (request == null || request.itemId() == null || !repository.itemCanBeGroupCover(request.itemId(), id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choisissez une photo publiée appartenant à ce groupe.");
+        }
+        repository.setGroupCover(id, request.itemId());
+        return new GalleryGroup(group.id(), group.title(), group.description(), group.itemCount(), group.sortOrder(), request.itemId());
     }
 
     @DeleteMapping("/api/admin/gallery/groups/{id}")
-    public ResponseEntity<Void> deleteGroup(@PathVariable String id) {
+    public ResponseEntity<Void> deleteGroup(@PathVariable("id") String id) {
         findGroup(id);
         repository.deleteGroup(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping(value = "/api/admin/gallery/groups/{id}/items", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> assignItemsToGroup(@PathVariable String id, @RequestBody GalleryGroupSelection selection) {
+    public ResponseEntity<Void> assignItemsToGroup(@PathVariable("id") String id, @RequestBody GalleryGroupSelection selection) {
         findGroup(id);
         if (selection == null || selection.ids() == null || selection.ids().isEmpty()
                 || new HashSet<>(selection.ids()).size() != selection.ids().size()
@@ -90,6 +111,17 @@ public class GalleryController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La sélection de photos est invalide.");
         }
         repository.assignGroup(id, selection.ids());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping(value = "/api/admin/gallery/groups/{id}/items/order", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> reorderGroupItems(@PathVariable("id") String id, @RequestBody GalleryOrder order) {
+        findGroup(id);
+        if (order == null || order.ids() == null || new HashSet<>(order.ids()).size() != order.ids().size()
+                || !repository.containsGroupItems(id, order.ids())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "L’ordre transmis ne correspond pas aux photos du groupe.");
+        }
+        repository.reorderGroupItems(id, order.ids());
         return ResponseEntity.noContent().build();
     }
 
@@ -101,19 +133,20 @@ public class GalleryController {
         String key = storeImage(form);
         GalleryRecord item = new GalleryRecord(
                 UUID.randomUUID().toString(), form.getTitle(), form.getCaption(), form.getCategory(),
-                key, emptyToNull(form.getInstagramUrl()), form.isPublished(), 0, groupId, group == null ? null : group.title());
+                key, emptyToNull(form.getInstagramUrl()), form.isPublished(), 0, groupId, group == null ? null : group.title(),
+                group == null ? null : group.description(), group == null ? 0 : group.sortOrder(), group == null ? null : group.coverItemId());
         try {
             repository.insert(item);
         } catch (RuntimeException exception) {
             images.delete(key);
             throw exception;
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(toItem(item));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toItem(findById(item.id())));
     }
 
     @PutMapping(value = "/api/admin/gallery/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public GalleryItem update(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @Valid @ModelAttribute GalleryForm form,
             BindingResult validation) {
         validate(validation);
@@ -127,7 +160,8 @@ public class GalleryController {
         }
         GalleryRecord updated = new GalleryRecord(
                 current.id(), form.getTitle(), form.getCaption(), form.getCategory(),
-                key, emptyToNull(form.getInstagramUrl()), form.isPublished(), current.sortOrder(), groupId, group == null ? null : group.title());
+                key, emptyToNull(form.getInstagramUrl()), form.isPublished(), current.sortOrder(), groupId, group == null ? null : group.title(),
+                group == null ? null : group.description(), group == null ? 0 : group.sortOrder(), group == null ? null : group.coverItemId());
         try {
             repository.update(updated);
         } catch (RuntimeException exception) {
@@ -139,11 +173,11 @@ public class GalleryController {
         if (replacedImage) {
             images.delete(current.imageKey());
         }
-        return toItem(updated);
+        return toItem(findById(id));
     }
 
     @DeleteMapping("/api/admin/gallery/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") String id) {
         GalleryRecord item = findById(id);
         repository.delete(id);
         images.delete(item.imageKey());
@@ -189,7 +223,8 @@ public class GalleryController {
     private GalleryItem toItem(GalleryRecord record) {
         return new GalleryItem(
                 record.id(), record.title(), record.caption(), record.category(),
-                "/api/gallery/images/" + record.imageKey(), record.instagramUrl(), record.published(), record.groupId(), record.groupTitle());
+                "/api/gallery/images/" + record.imageKey(), record.instagramUrl(), record.published(), record.groupId(), record.groupTitle(),
+                record.groupDescription(), record.groupSortOrder(), record.groupCoverItemId());
     }
 
     private String emptyToNull(String value) {

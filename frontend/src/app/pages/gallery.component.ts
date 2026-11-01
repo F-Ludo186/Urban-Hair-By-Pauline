@@ -3,25 +3,41 @@ import { Component, HostListener, inject, OnDestroy } from '@angular/core';
 import { map } from 'rxjs';
 import { CatalogService, GalleryItem } from '../data/catalog.service';
 
+interface GalleryAlbum {
+  id: string;
+  title: string;
+  description: string;
+  sortOrder: number;
+  coverItemId: string | null;
+  items: GalleryItem[];
+  displayItems: GalleryItem[];
+}
+
 @Component({
   standalone: true,
   imports: [AsyncPipe],
   template: `
     <section class="page-hero"><p class="eyebrow">COUPES · COULEURS · INSPIRATION</p><h1>Le geste <em>juste.</em></h1><p>Quelques instants et transformations capturés au salon.</p></section>
     @if (albums$ | async; as albums) {
-      @for (album of albums; track album.id) {
-        <section class="gallery-album" [attr.aria-label]="album.title || 'Autres réalisations'">
-          @if (album.title) { <h2>{{ album.title }}</h2> }
-          <div class="gallery-grid">
-            @for (item of album.items; track item.id) {
-              <figure role="button" tabindex="0" (click)="openPhoto(item)" (keydown.enter)="openPhoto(item)" (keydown.space)="openPhoto(item); $event.preventDefault()" [attr.aria-label]="'Agrandir la photo : ' + item.title">
+      @if (albums.length) {
+        <div class="gallery-grid">
+          @for (album of albums; track album.id) {
+            @for (item of album.displayItems; track item.id) {
+              <figure [class.gallery-group-cover]="album.id !== 'ungrouped'" role="button" tabindex="0" (click)="openPhoto(item, album.items)" (keydown.enter)="openPhoto(item, album.items)" (keydown.space)="openPhoto(item, album.items); $event.preventDefault()" [attr.aria-label]="album.id !== 'ungrouped' ? album.title + ', ' + album.items.length + ' photos' : 'Agrandir la photo : ' + item.title">
                 <img [src]="item.imageUrl" [alt]="item.title" loading="lazy">
-                <figcaption>{{ item.title }}{{ item.caption ? ' — ' + item.caption : '' }}</figcaption>
+                @if (album.id !== 'ungrouped') {
+                  <figcaption class="gallery-group-overlay">
+                    <span class="gallery-group-title">{{ album.title }}</span>
+                    <span class="gallery-group-count">{{ album.items.length }} {{ album.items.length > 1 ? 'photos' : 'photo' }}</span>
+                  </figcaption>
+                } @else {
+                  <figcaption>{{ item.title }}{{ item.caption ? ' — ' + item.caption : '' }}</figcaption>
+                }
               </figure>
             }
-          </div>
-        </section>
-      } @empty {
+          }
+        </div>
+      } @else {
         <p class="gallery-empty">Les prochaines réalisations arrivent bientôt.</p>
       }
     }
@@ -36,9 +52,8 @@ import { CatalogService, GalleryItem } from '../data/catalog.service';
           </div>
           <aside class="photo-lightbox-copy">
             <p class="eyebrow">{{ photo.groupTitle || 'RÉALISATION AU SALON' }}</p>
-            <h2>{{ photo.title }}</h2>
-            <p class="lightbox-category">{{ photo.category }}</p>
-            @if (photo.caption) { <p class="lightbox-caption">{{ photo.caption }}</p> }
+            <h2>{{ photo.groupTitle || photo.title }}</h2>
+            @if (photo.groupDescription) { <p class="lightbox-caption">{{ photo.groupDescription }}</p> }
             <small>{{ selectedIndex + 1 }} / {{ photoItems.length }}</small>
           </aside>
         </section>
@@ -54,26 +69,35 @@ export class GalleryComponent implements OnDestroy {
   private previousBodyOverflow = '';
 
   albums$ = inject(CatalogService).getGallery().pipe(map(items => {
-    const albums = new Map<string, { id: string; title: string; items: GalleryItem[] }>();
+    const albums = new Map<string, GalleryAlbum>();
     for (const item of items) {
       const id = item.groupId ?? 'ungrouped';
       let album = albums.get(id);
       if (!album) {
-        album = { id, title: item.groupTitle ?? '', items: [] };
+        album = { id, title: item.groupTitle ?? '', description: item.groupDescription ?? '', sortOrder: item.groupSortOrder, coverItemId: item.groupCoverItemId, items: [], displayItems: [] };
         albums.set(id, album);
       }
       album.items.push(item);
     }
-    const sections = [...albums.values()];
-    this.photoItems = sections.flatMap(album => album.items);
+    const sections = [...albums.values()].sort((a, b) => {
+      if (a.id === 'ungrouped') return 1;
+      if (b.id === 'ungrouped') return -1;
+      return a.sortOrder - b.sortOrder;
+    });
+    for (const album of sections) {
+      album.displayItems = album.id === 'ungrouped'
+        ? album.items
+        : [album.items.find(item => item.id === album.coverItemId) ?? album.items[0]];
+    }
     return sections;
   }));
 
-  openPhoto(item: GalleryItem): void {
-    const index = this.photoItems.findIndex(photo => photo.id === item.id);
+  openPhoto(item: GalleryItem, albumItems: GalleryItem[]): void {
+    this.photoItems = albumItems;
+    const index = albumItems.findIndex(photo => photo.id === item.id);
     if (index < 0) return;
     this.selectedIndex = index;
-    this.selectedPhoto = this.photoItems[index];
+    this.selectedPhoto = albumItems[index];
     this.previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
   }

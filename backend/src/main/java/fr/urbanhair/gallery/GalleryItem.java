@@ -9,4 +9,7 @@ public record GalleryItem(
         String instagramUrl,
         boolean published,
         String groupId,
-        String groupTitle) {}
+        String groupTitle,
+        String groupDescription,
+        int groupSortOrder,
+        String groupCoverItemId) {}

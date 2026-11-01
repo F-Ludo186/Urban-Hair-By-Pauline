@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminService } from '../data/admin.service';
 
 @Component({
@@ -12,7 +12,7 @@ import { AdminService } from '../data/admin.service';
       <section class="admin-login-card">
         <p class="eyebrow">ESPACE PRIVÉ</p>
         <h1>Bienvenue.</h1>
-        <p>Connectez-vous pour gérer les photos et les textes de votre galerie.</p>
+        <p>Connectez-vous pour accéder aux outils de gestion du site.</p>
         <form (ngSubmit)="submit()">
           <label for="admin-username">Identifiant</label>
           <input id="admin-username" name="username" [(ngModel)]="username" autocomplete="username" required>
@@ -31,6 +31,7 @@ import { AdminService } from '../data/admin.service';
 export class AdminLoginComponent {
   private readonly admin = inject(AdminService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   username = '';
   password = '';
@@ -42,7 +43,13 @@ export class AdminLoginComponent {
     this.busy = true;
     this.errorMessage = '';
     this.admin.login(this.username.trim(), this.password).subscribe({
-      next: () => this.router.navigateByUrl('/admin'),
+      next: () => {
+        const requestedUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        const destination = requestedUrl?.startsWith('/admin/') && requestedUrl !== '/admin/login'
+          ? requestedUrl
+          : '/admin';
+        void this.router.navigateByUrl(destination);
+      },
       error: (error: { status?: number }) => {
         this.errorMessage = error.status === 401
           ? 'Identifiant ou mot de passe incorrect.'

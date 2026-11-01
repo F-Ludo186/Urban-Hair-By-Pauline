@@ -38,7 +38,7 @@ Si `winget` ne fonctionne pas, téléchargez l’archive **Binary zip** depuis [
 
 ```bash
 cd backend
-mvn spring-boot:run
+mvn.cmd spring-boot:run
 ```
 
 Dans un second terminal :
@@ -53,13 +53,13 @@ Sous PowerShell, `npm.cmd` évite le blocage de la stratégie d’exécution des
 
 ## Administration de la galerie
 
-L’administration est accessible à `http://localhost:4200/admin/login`. Elle permet d’ajouter une réalisation avec sa photo et sa légende, de modifier ses informations ou sa photo, de la publier ou de la garder en brouillon, et de la supprimer. Les photos peuvent être organisées en groupes titrés : le téléversement de plusieurs images propose un titre à partir de leurs noms, et les photos déjà ajoutées peuvent être sélectionnées ensemble pour créer un groupe. Les groupes sont présentés comme des sections dans la galerie publique ; supprimer un groupe conserve ses photos.
+L’administration est accessible depuis le lien du pied de page ou via `http://localhost:4200/admin`. Le tableau de bord présente les espaces de gestion disponibles ; la galerie se trouve dans `http://localhost:4200/admin/galerie`. Elle permet d’ajouter des photos à un groupe, puis de gérer les groupes : modifier leur titre et leur texte, choisir leur photo de couverture, réordonner les photos du groupe et réordonner les groupes. Chaque groupe s’affiche comme une vignette dans la grille publique ; un clic ouvre ses photos dans l’ordre choisi et affiche le texte du groupe. Supprimer un groupe conserve ses photos.
 
 Avant de lancer le backend, configurez un identifiant et un mot de passe réservés à l’administratrice. Dans PowerShell :
 
 ```powershell
 $env:ADMIN_USERNAME = "pauline"
-$env:ADMIN_PASSWORD = "choisir-une-phrase-secrete-longue"
+$env:ADMIN_PASSWORD = "P/auline2203"
 cd backend
 mvn spring-boot:run
 ```

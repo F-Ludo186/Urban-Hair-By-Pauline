@@ -6,3 +6,5 @@ backend/data/
 .idea/
 *.iml
 .DS_Store
+scripts/dev.env.ps1
+.dev-pids

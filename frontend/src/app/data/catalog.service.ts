@@ -21,6 +21,9 @@ export interface GalleryItem {
   published: boolean;
   groupId: string | null;
   groupTitle: string | null;
+  groupDescription: string | null;
+  groupSortOrder: number;
+  groupCoverItemId: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

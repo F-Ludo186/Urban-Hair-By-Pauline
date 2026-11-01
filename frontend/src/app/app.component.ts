@@ -23,7 +23,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
       <footer class="site-footer">
         <a class="brand footer-brand" routerLink="/">URBAN HAIR<span>by Pauline</span></a>
         <p>Un lieu, une signature, votre beauté.</p>
-        <div><a routerLink="/boutique">Boutique</a><a routerLink="/galerie">Galerie</a><a href="mailto:bonjour@urbanhair.fr">Contact</a></div>
+        <div class="footer-links"><a routerLink="/boutique">Boutique</a><a routerLink="/galerie">Galerie</a><a href="mailto:bonjour@urbanhair.fr">Contact</a><a class="footer-admin-link" routerLink="/admin">Administration</a></div>
         <small>© 2026 Urban Hair by Pauline</small>
       </footer>
     }

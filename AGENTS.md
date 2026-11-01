@@ -7,7 +7,7 @@ Ce document décrit l’architecture et les choix visuels existants. Le consulte
 - `frontend/` : application Angular standalone, écrite en TypeScript.
   - `src/app/app.component.ts` : coque du site public (bandeau, en-tête, navigation et pied de page).
   - `src/app/app.routes.ts` : routes et titres des pages.
-  - `src/app/pages/` : pages `home`, `shop`, `gallery`, `admin` et `admin-login`.
+  - `src/app/pages/` : pages `home`, `shop`, `gallery`, `admin-home`, `admin` et `admin-login`.
   - `src/app/data/` : services de données et garde d’accès à l’administration.
   - `src/styles.css` : styles globaux et charte visuelle publique et admin.
   - `public/images/` : ressources statiques, accessibles depuis `/images/...`.
@@ -20,8 +20,8 @@ Ce document décrit l’architecture et les choix visuels existants. Le consulte
 - `/` : accueil (`HomeComponent`).
 - `/boutique` : catalogue (`ShopComponent`).
 - `/galerie` : réalisations du salon (`GalleryComponent`), données par l’API.
-- `/admin/login` et `/admin` : connexion et gestion de la galerie. La route `/admin` est protégée par `adminGuard`.
-- Les réalisations peuvent être rassemblées dans des groupes titrés. Les groupes et leur affectation sont persistés par l’API ; la page publique les affiche en albums, chacun avec la grille carrée de la galerie.
+- Le lien Administration du pied de page mène à `/admin/login` ou au tableau de bord protégé `/admin`. `/admin` présente les outils de gestion disponibles ; `/admin/galerie` ouvre la gestion de la galerie. Chaque route de gestion est protégée par `adminGuard`.
+- Les réalisations sont gérées dans des groupes titrés et décrits. Chaque groupe possède un ordre d’affichage et une photo de couverture ; ses photos ont leur propre ordre. Dans l’administration, le texte, la couverture et le tri se modifient depuis le groupe. La page publique affiche les couvertures dans une grille commune ; cliquer ouvre les photos du groupe dans l’ordre choisi avec le texte du groupe.
 - Le backend expose l’API sous `/api`. Le proxy Angular de développement relaie ces requêtes vers Spring Boot.
 - Garder la logique d’accès aux données dans `frontend/src/app/data/` et la logique métier/API dans le backend. Ne pas intégrer de secrets dans le frontend ni dans Git.
 

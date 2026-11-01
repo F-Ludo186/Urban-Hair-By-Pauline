@@ -10,4 +10,7 @@ public record GalleryRecord(
         boolean published,
         int sortOrder,
         String groupId,
-        String groupTitle) {}
+        String groupTitle,
+        String groupDescription,
+        int groupSortOrder,
+        String groupCoverItemId) {}
