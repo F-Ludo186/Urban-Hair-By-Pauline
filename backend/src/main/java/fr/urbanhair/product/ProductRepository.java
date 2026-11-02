@@ -1,5 +1,6 @@
 package fr.urbanhair.product;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -120,9 +121,12 @@ public class ProductRepository {
 
     @Transactional
     public void reorder(List<String> ids) {
+        if (ids.isEmpty()) return;
+        List<Object[]> batch = new ArrayList<>(ids.size());
         for (int index = 0; index < ids.size(); index++) {
-            jdbc.update("UPDATE products SET sort_order = ? WHERE id = ?", index, ids.get(index));
+            batch.add(new Object[] { index, ids.get(index) });
         }
+        jdbc.batchUpdate("UPDATE products SET sort_order = ? WHERE id = ?", batch);
     }
 
     public boolean containsAllIds(List<String> ids) {

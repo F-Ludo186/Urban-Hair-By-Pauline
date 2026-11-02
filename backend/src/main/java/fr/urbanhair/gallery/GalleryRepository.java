@@ -1,5 +1,6 @@
 package fr.urbanhair.gallery;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -130,7 +131,7 @@ public class GalleryRepository {
 
     @Transactional
     public void reorderGroups(List<String> ids) {
-        for (int index = 0; index < ids.size(); index++) jdbc.update("UPDATE gallery_groups SET sort_order = ? WHERE id = ?", index, ids.get(index));
+        batchUpdateOrder("UPDATE gallery_groups SET sort_order = ? WHERE id = ?", ids, null);
     }
 
     public boolean containsAllGroups(List<String> ids) {
@@ -140,12 +141,12 @@ public class GalleryRepository {
 
     @Transactional
     public void reorderGroupItems(String groupId, List<String> ids) {
-        for (int index = 0; index < ids.size(); index++) jdbc.update("UPDATE gallery_items SET sort_order = ? WHERE id = ? AND group_id = ?", index, ids.get(index), groupId);
+        batchUpdateOrder("UPDATE gallery_items SET sort_order = ? WHERE id = ? AND group_id = ?", ids, groupId);
     }
 
     @Transactional
     public void reorder(List<String> ids) {
-        for (int index = 0; index < ids.size(); index++) jdbc.update("UPDATE gallery_items SET sort_order = ? WHERE id = ?", index, ids.get(index));
+        batchUpdateOrder("UPDATE gallery_items SET sort_order = ? WHERE id = ?", ids, null);
     }
 
     public boolean containsAllIds(List<String> ids) {
@@ -187,5 +188,16 @@ public class GalleryRepository {
 
     private String placeholders(int count) {
         return String.join(",", java.util.Collections.nCopies(count, "?"));
+    }
+
+    private void batchUpdateOrder(String sql, List<String> ids, String groupId) {
+        if (ids.isEmpty()) return;
+        List<Object[]> batch = new ArrayList<>(ids.size());
+        for (int index = 0; index < ids.size(); index++) {
+            batch.add(groupId == null
+                    ? new Object[] { index, ids.get(index) }
+                    : new Object[] { index, ids.get(index), groupId });
+        }
+        jdbc.batchUpdate(sql, batch);
     }
 }
