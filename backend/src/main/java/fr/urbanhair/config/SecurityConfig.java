@@ -74,6 +74,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)
+                        .ignoringRequestMatchers("/api/orders/stripe-webhook")
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .cors(org.springframework.security.config.Customizer.withDefaults())
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))

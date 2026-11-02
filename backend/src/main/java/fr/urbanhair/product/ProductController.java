@@ -80,17 +80,27 @@ public class ProductController {
             BindingResult validation) {
         validate(form, validation, false);
         ProductRecord current = findRecord(id);
+        if (!repository.canSetStock(id, form.getStockQuantity())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Le stock ne peut pas être inférieur aux quantités réservées pour des commandes en cours.");
+        }
         String sku = normalizedSku(form.getSku());
         ensureSkuAvailable(sku, id);
         boolean replaceImage = form.getImage() != null && !form.getImage().isEmpty();
         String imageKey = replaceImage ? storeImage(form) : current.imageKey();
         String imageUrl = replaceImage ? null : current.imageUrl();
         ProductRecord updated = toRecord(id, form, sku, imageKey, imageUrl, current.sortOrder());
+        int updatedRows;
         try {
-            repository.update(updated);
+            updatedRows = repository.update(updated);
         } catch (RuntimeException exception) {
             if (replaceImage) images.delete(imageKey);
             throw exception;
+        }
+        if (updatedRows != 1) {
+            if (replaceImage) images.delete(imageKey);
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Le stock ne peut pas être inférieur aux quantités réservées pour des commandes en cours.");
         }
         if (replaceImage && current.imageKey() != null) images.delete(current.imageKey());
         return findById(id);
@@ -99,7 +109,14 @@ public class ProductController {
     @DeleteMapping("/admin/products/{id}")
     public ResponseEntity<Void> delete(@PathVariable("id") String id) {
         ProductRecord product = findRecord(id);
-        repository.delete(id);
+        if (repository.hasReservations(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Ce produit est réservé pour une commande en cours et ne peut pas être supprimé.");
+        }
+        if (repository.delete(id) != 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Ce produit est réservé pour une commande en cours et ne peut pas être supprimé.");
+        }
         if (product.imageKey() != null) images.delete(product.imageKey());
         return ResponseEntity.noContent().build();
     }

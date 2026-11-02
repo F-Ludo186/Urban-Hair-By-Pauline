@@ -58,6 +58,34 @@ class ProductRepositoryTest {
                 .containsExactly("product-2", "product-1");
     }
 
+    @Test
+    void reservesStockUntilPaymentAndCommitsOnlyOncePaid() {
+        repository.insert(product("product-stock", "STOCK-01", 0));
+
+        assertThat(repository.reserveStock("product-stock", 3)).isTrue();
+        assertThat(repository.reserveStock("product-stock", 2)).isFalse();
+        assertThat(repository.reservedQuantity("product-stock")).isEqualTo(3);
+
+        assertThat(repository.commitReservedStock("product-stock", 2)).isTrue();
+        assertThat(repository.findById("product-stock")).get()
+                .satisfies(saved -> assertThat(saved.stockQuantity()).isEqualTo(2));
+        assertThat(repository.reservedQuantity("product-stock")).isEqualTo(1);
+    }
+
+    @Test
+    void stockCannotBeReducedBelowOutstandingReservations() {
+        repository.insert(product("product-reserved", "STOCK-02", 0));
+        assertThat(repository.reserveStock("product-reserved", 3)).isTrue();
+
+        ProductRecord tooLow = new ProductRecord(
+                "product-reserved", "Sérum", "Soin", "Description produit",
+                new BigDecimal("25.00"), new BigDecimal("18.50"), "STOCK-02",
+                "Marque", "50 ml", 2, true, true, 0, "image-key.jpg", null);
+        assertThat(repository.update(tooLow)).isZero();
+        assertThat(repository.findById("product-reserved")).get()
+                .satisfies(saved -> assertThat(saved.stockQuantity()).isEqualTo(4));
+    }
+
     private ProductRecord product(String id, String sku, int sortOrder) {
         return new ProductRecord(
                 id, "Sérum", "Soin", "Description produit", new BigDecimal("25.00"),

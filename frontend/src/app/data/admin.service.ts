@@ -43,6 +43,21 @@ export interface ProductFormValue {
   featured: boolean;
 }
 
+export interface ShopSettings {
+  notificationEmail: string;
+  deliveryFee: number | null;
+  deliveryZone: string;
+  deliveryPostalPrefixes: string;
+  pickupAddress: string;
+  pickupInstructions: string;
+}
+
+export interface AdminShopSettings {
+  settings: ShopSettings;
+  paymentConfigured: boolean;
+  mailConfigured: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
@@ -73,6 +88,14 @@ export class AdminService {
 
   getProducts(): Observable<Product[]> {
     return this.http.get<Product[]>('/api/admin/products');
+  }
+
+  getShopSettings(): Observable<AdminShopSettings> {
+    return this.http.get<AdminShopSettings>('/api/admin/shop-settings');
+  }
+
+  saveShopSettings(settings: ShopSettings): Observable<AdminShopSettings> {
+    return this.http.put<AdminShopSettings>('/api/admin/shop-settings', settings);
   }
 
   createProduct(value: ProductFormValue, image: File): Observable<Product> {

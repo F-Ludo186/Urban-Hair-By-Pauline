@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { AdminService, ProductFormValue } from '../data/admin.service';
+import { AdminService, ProductFormValue, ShopSettings } from '../data/admin.service';
 import { Product } from '../data/catalog.service';
 
 @Component({
@@ -21,36 +21,72 @@ import { Product } from '../data/catalog.service';
         @if (successMessage) { <p class="admin-success" role="status">{{ successMessage }}</p> }
         @if (errorMessage) { <p class="admin-error" role="alert">{{ errorMessage }}</p> }
 
-        <div class="shop-admin-heading">
-          <div><p class="eyebrow">PRODUITS &amp; SOINS</p><h2>Gérer les articles</h2><p>Ajoutez vos produits et choisissez ceux qui apparaissent dans la boutique.</p></div>
-          <button class="button button-dark" type="button" (click)="startNewProduct()" [disabled]="saving">＋ Ajouter un produit</button>
-        </div>
+        <div class="shop-admin-workspace">
+          <aside class="shop-admin-manager" aria-label="Gestion de la boutique">
+            <div class="panel-heading shop-manager-heading"><div><p class="eyebrow">PARAMÈTRES</p><h2>Gestion globale</h2></div></div>
 
-        @if (editing) {
-          <section class="admin-editor shop-product-editor" aria-labelledby="product-editor-title">
-            <div class="admin-editor-heading"><div><p class="eyebrow">{{ editingId ? 'MODIFICATION' : 'NOUVEL ARTICLE' }}</p><h2 id="product-editor-title">{{ editingId ? 'Modifier le produit' : 'Créer un produit' }}</h2></div><button class="admin-close" type="button" (click)="cancelEdit()" [disabled]="saving" aria-label="Fermer">×</button></div>
-            <form (ngSubmit)="saveProduct()" #productForm="ngForm">
-              <div class="admin-form-grid">
-                <label class="admin-field">Nom du produit<input name="name" [(ngModel)]="form.name" maxlength="120" required></label>
-                <label class="admin-field">Catégorie<input name="category" [(ngModel)]="form.category" maxlength="80" placeholder="Soin, coiffage…" required></label>
-                <label class="admin-field">Marque <span class="admin-optional">Facultatif</span><input name="brand" [(ngModel)]="form.brand" maxlength="120"></label>
-                <label class="admin-field">Format / contenance <span class="admin-optional">Facultatif</span><input name="productFormat" [(ngModel)]="form.productFormat" maxlength="120" placeholder="250 ml"></label>
-                <label class="admin-field">Référence / SKU <span class="admin-optional">Facultatif · unique</span><input name="sku" [(ngModel)]="form.sku" maxlength="80"></label>
-                <label class="admin-field">Prix de vente TTC (€)<input name="price" type="number" [(ngModel)]="form.price" min="0" max="99999999.99" step="0.01" required></label>
-                <label class="admin-field">Prix promotionnel TTC (€) <span class="admin-optional">Facultatif</span><input name="promotionPrice" type="number" [(ngModel)]="form.promotionPrice" min="0" max="99999999.99" step="0.01"></label>
-                <label class="admin-field">Quantité en stock <span class="admin-optional">Laisser vide si non suivie</span><input name="stockQuantity" type="number" [(ngModel)]="form.stockQuantity" min="0" step="1"></label>
-                <label class="admin-field admin-field-wide">Description<textarea name="description" [(ngModel)]="form.description" maxlength="2000" rows="4" placeholder="Bénéfices, conseils d’utilisation, composition…"></textarea></label>
-                <label class="admin-field admin-field-wide">Photo du produit <span class="admin-optional">JPG ou PNG · 10 Mo max.{{ editingId ? ' · laisser vide pour conserver la photo actuelle' : '' }}</span><input name="image" type="file" accept="image/jpeg,image/png" (change)="selectImage($event)" [required]="!editingId"><img [src]="imagePreviewUrl || (editingProduct?.imageUrl ?? '')" [hidden]="!imagePreviewUrl && !editingProduct?.imageUrl" class="shop-product-image-preview" alt="Aperçu de la photo produit"></label>
-                <label class="admin-publish-toggle"><input name="published" type="checkbox" [(ngModel)]="form.published"> Publier dans la boutique</label>
-                <label class="admin-publish-toggle"><input name="featured" type="checkbox" [(ngModel)]="form.featured"> Mettre en avant</label>
+            <details class="admin-editor shop-settings-editor">
+              <summary class="shop-settings-summary">
+                <div><p class="eyebrow">COMMANDES EN LIGNE</p><h2 id="shop-settings-title">Livraison, retrait et notifications</h2></div>
+                <span class="shop-settings-expand">Afficher les paramètres</span>
+                <span class="shop-settings-collapse">Masquer les paramètres</span>
+              </summary>
+              @if (settingsLoading) {
+                <p class="admin-empty" role="status">Chargement des paramètres…</p>
+              } @else {
+                <div class="shop-checkout-status">
+                  <p><strong>Paiement Stripe :</strong> {{ paymentConfigured ? 'clés configurées' : 'à configurer dans les variables du serveur' }}</p>
+                  <p><strong>E-mail SMTP :</strong> {{ mailConfigured ? 'configuré' : 'à configurer dans les variables du serveur' }}</p>
+                  <p>Les paiements restent désactivés tant que Stripe et l’envoi d’e-mails ne sont pas configurés.</p>
+                </div>
+                <form (ngSubmit)="saveSettings()" #settingsForm="ngForm">
+                  <div class="admin-form-grid">
+                    <label class="admin-field admin-field-wide">E-mail du salon pour les commandes<input name="notificationEmail" type="email" [(ngModel)]="settings.notificationEmail" maxlength="254" required></label>
+                    <label class="admin-field">Forfait livraison TTC (€) <span class="admin-optional">Laisser vide pour désactiver la livraison</span><input name="deliveryFee" type="number" [(ngModel)]="settings.deliveryFee" min="0" max="999999.99" step="0.01"></label>
+                    <label class="admin-field">Zone de livraison<input name="deliveryZone" [(ngModel)]="settings.deliveryZone" maxlength="120" required></label>
+                    <label class="admin-field admin-field-wide">Préfixes des codes postaux autorisés <span class="admin-optional">Ex. 37 ou 37, 41 ; plages possibles : 01-19,20,21-95</span><input name="deliveryPostalPrefixes" [(ngModel)]="settings.deliveryPostalPrefixes" maxlength="120" required></label>
+                    <label class="admin-field admin-field-wide">Adresse de retrait au salon<input name="pickupAddress" [(ngModel)]="settings.pickupAddress" maxlength="500" required></label>
+                    <label class="admin-field admin-field-wide">Instructions de retrait <span class="admin-optional">Facultatif</span><textarea name="pickupInstructions" [(ngModel)]="settings.pickupInstructions" maxlength="1000" rows="2"></textarea></label>
+                  </div>
+                  @if (settingsError) { <p class="admin-error" role="alert">{{ settingsError }}</p> }
+                  <div class="admin-form-actions"><button class="button button-dark" type="submit" [disabled]="settingsSaving || !settingsForm.valid">{{ settingsSaving ? 'Enregistrement…' : 'Enregistrer les paramètres' }}</button></div>
+                </form>
+              }
+            </details>
+
+            <section class="shop-manager-products" aria-labelledby="shop-products-title">
+              <div class="shop-manager-products-heading">
+                <div><p class="eyebrow">PRODUITS &amp; SOINS</p><h2 id="shop-products-title">Gestion des produits</h2></div>
+                <button class="button button-dark" type="button" (click)="startNewProduct()" [disabled]="saving">＋ Ajouter un produit</button>
               </div>
-              @if (imageError) { <p class="admin-error" role="alert">{{ imageError }}</p> }
-              <div class="admin-form-actions"><button class="admin-secondary-button" type="button" (click)="cancelEdit()" [disabled]="saving">Annuler</button><button class="button button-dark" type="submit" [disabled]="saving || !productForm.valid">{{ saving ? 'Enregistrement…' : 'Enregistrer le produit' }}</button></div>
-            </form>
-          </section>
-        }
 
-        <section class="admin-items shop-product-list" aria-labelledby="products-heading">
+              @if (editing) {
+                <section class="admin-editor shop-product-editor" aria-labelledby="product-editor-title">
+                  <div class="admin-editor-heading"><div><p class="eyebrow">{{ editingId ? 'MODIFICATION' : 'NOUVEL ARTICLE' }}</p><h2 id="product-editor-title">{{ editingId ? 'Modifier le produit' : 'Créer un produit' }}</h2></div><button class="admin-close" type="button" (click)="cancelEdit()" [disabled]="saving" aria-label="Fermer">×</button></div>
+                  <form (ngSubmit)="saveProduct()" #productForm="ngForm">
+                    <div class="admin-form-grid">
+                      <label class="admin-field">Nom du produit<input name="name" [(ngModel)]="form.name" maxlength="120" required></label>
+                      <label class="admin-field">Catégorie<input name="category" [(ngModel)]="form.category" maxlength="80" placeholder="Soin, coiffage…" required></label>
+                      <label class="admin-field">Marque <span class="admin-optional">Facultatif</span><input name="brand" [(ngModel)]="form.brand" maxlength="120"></label>
+                      <label class="admin-field">Format / contenance <span class="admin-optional">Facultatif</span><input name="productFormat" [(ngModel)]="form.productFormat" maxlength="120" placeholder="250 ml"></label>
+                      <label class="admin-field">Référence / SKU <span class="admin-optional">Facultatif · unique</span><input name="sku" [(ngModel)]="form.sku" maxlength="80"></label>
+                      <label class="admin-field">Prix de vente TTC (€)<input name="price" type="number" [(ngModel)]="form.price" min="0" max="99999999.99" step="0.01" required></label>
+                      <label class="admin-field">Prix promotionnel TTC (€) <span class="admin-optional">Facultatif</span><input name="promotionPrice" type="number" [(ngModel)]="form.promotionPrice" min="0" max="99999999.99" step="0.01"></label>
+                      <label class="admin-field">Quantité en stock <span class="admin-optional">Laisser vide si non suivie</span><input name="stockQuantity" type="number" [(ngModel)]="form.stockQuantity" min="0" step="1"></label>
+                      <label class="admin-field admin-field-wide">Description<textarea name="description" [(ngModel)]="form.description" maxlength="2000" rows="4" placeholder="Bénéfices, conseils d’utilisation, composition…"></textarea></label>
+                      <label class="admin-field admin-field-wide">Photo du produit <span class="admin-optional">JPG ou PNG · 10 Mo max.{{ editingId ? ' · laisser vide pour conserver la photo actuelle' : '' }}</span><input name="image" type="file" accept="image/jpeg,image/png" (change)="selectImage($event)" [required]="!editingId"><img [src]="imagePreviewUrl || (editingProduct?.imageUrl ?? '')" [hidden]="!imagePreviewUrl && !editingProduct?.imageUrl" class="shop-product-image-preview" alt="Aperçu de la photo produit"></label>
+                      <label class="admin-publish-toggle"><input name="published" type="checkbox" [(ngModel)]="form.published"> Publier dans la boutique</label>
+                      <label class="admin-publish-toggle"><input name="featured" type="checkbox" [(ngModel)]="form.featured"> Mettre en avant</label>
+                    </div>
+                    @if (imageError) { <p class="admin-error" role="alert">{{ imageError }}</p> }
+                    <div class="admin-form-actions"><button class="admin-secondary-button" type="button" (click)="cancelEdit()" [disabled]="saving">Annuler</button><button class="button button-dark" type="submit" [disabled]="saving || !productForm.valid">{{ saving ? 'Enregistrement…' : 'Enregistrer le produit' }}</button></div>
+                  </form>
+                </section>
+              }
+            </section>
+          </aside>
+
+          <section class="admin-items shop-product-list" aria-labelledby="products-heading">
           <div class="admin-list-heading"><div><h2 id="products-heading">Catalogue <span>({{ products.length }})</span></h2><p>Montez ou descendez les produits pour modifier leur ordre d’affichage.</p></div></div>
           @if (loading) {
             <p class="admin-empty" role="status">Chargement du catalogue…</p>
@@ -76,7 +112,8 @@ import { Product } from '../data/catalog.service';
               }
             </div>
           }
-        </section>
+          </section>
+        </div>
       </main>
     </div>
   `
@@ -98,10 +135,24 @@ export class AdminShopComponent implements OnInit, OnDestroy {
   selectedImage: File | null = null;
   imagePreviewUrl = '';
   imageError = '';
+  settingsLoading = true;
+  settingsSaving = false;
+  settingsError = '';
+  paymentConfigured = false;
+  mailConfigured = false;
+  settings: ShopSettings = {
+    notificationEmail: '',
+    deliveryFee: null,
+    deliveryZone: '',
+    deliveryPostalPrefixes: '',
+    pickupAddress: '',
+    pickupInstructions: ''
+  };
   form = this.emptyForm();
 
   ngOnInit(): void {
     this.loadProducts();
+    this.loadSettings();
   }
 
   ngOnDestroy(): void {
@@ -124,6 +175,41 @@ export class AdminShopComponent implements OnInit, OnDestroy {
         }
         this.loadError = this.errorText(error);
       }
+    });
+  }
+
+  loadSettings(): void {
+    this.settingsLoading = true;
+    this.admin.getShopSettings().subscribe({
+      next: response => {
+        this.settings = response.settings;
+        this.paymentConfigured = response.paymentConfigured;
+        this.mailConfigured = response.mailConfigured;
+        this.settingsLoading = false;
+      },
+      error: error => {
+        this.settingsLoading = false;
+        if (error.status === 401 || error.status === 403) {
+          void this.router.navigateByUrl('/admin/login');
+          return;
+        }
+        this.settingsError = this.errorText(error);
+      }
+    });
+  }
+
+  saveSettings(): void {
+    if (this.settingsSaving) return;
+    this.settingsSaving = true;
+    this.settingsError = '';
+    this.admin.saveShopSettings(this.settings).pipe(finalize(() => this.settingsSaving = false)).subscribe({
+      next: response => {
+        this.settings = response.settings;
+        this.paymentConfigured = response.paymentConfigured;
+        this.mailConfigured = response.mailConfigured;
+        this.successMessage = 'Les paramètres de commande ont été enregistrés.';
+      },
+      error: error => this.settingsError = this.errorText(error)
     });
   }
 
@@ -283,6 +369,7 @@ export class AdminShopComponent implements OnInit, OnDestroy {
   private errorText(error: { status?: number; error?: { message?: string } }): string {
     if (error.status === 0) return 'Le serveur ne répond pas. Vérifiez que le backend est démarré.';
     if (error.status === 401 || error.status === 403) return 'Votre session a expiré. Reconnectez-vous.';
+    if (error.status === 404) return 'L’API boutique n’est pas à jour. Redémarrez le backend puis rechargez cette page.';
     if (error.status === 409) return error.error?.message ?? 'Cette référence produit est déjà utilisée.';
     if (error.status === 413) return 'Cette photo est trop volumineuse. Choisissez une photo de 10 Mo maximum.';
     if (error.status === 400) return error.error?.message ?? 'Vérifiez les informations saisies.';

@@ -34,6 +34,15 @@ export interface GalleryItem {
   groupCoverItemId: string | null;
 }
 
+export interface ShopOptions {
+  checkoutAvailable: boolean;
+  deliveryAvailable: boolean;
+  deliveryFee: number | null;
+  deliveryZone: string;
+  pickupAddress: string;
+  pickupInstructions: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private readonly http = inject(HttpClient);
@@ -41,6 +50,10 @@ export class CatalogService {
 
   getProducts(): Observable<Product[]> {
     return this.http.get<Product[]>(`${this.apiUrl}/products`);
+  }
+
+  getShopOptions(): Observable<ShopOptions> {
+    return this.http.get<ShopOptions>(`${this.apiUrl}/shop/settings`);
   }
 
   getGallery(): Observable<GalleryItem[]> {

@@ -37,6 +37,48 @@ public class ProductRepository {
         return jdbc.query(SELECT + " WHERE id = ?", MAPPER, id).stream().findFirst();
     }
 
+    public Optional<ProductRecord> findByIdForUpdate(String id) {
+        return jdbc.query(SELECT + " WHERE id = ? FOR UPDATE", MAPPER, id).stream().findFirst();
+    }
+
+    public int reservedQuantity(String id) {
+        Integer reserved = jdbc.queryForObject(
+                "SELECT reserved_quantity FROM products WHERE id = ?", Integer.class, id);
+        return reserved == null ? 0 : reserved;
+    }
+
+    public boolean reserveStock(String id, int quantity) {
+        return jdbc.update("""
+                UPDATE products SET reserved_quantity = reserved_quantity + ?
+                WHERE id = ? AND (stock_quantity IS NULL OR stock_quantity - reserved_quantity >= ?)
+                """, quantity, id, quantity) == 1;
+    }
+
+    public void releaseReservedStock(String id, int quantity) {
+        jdbc.update("""
+                UPDATE products SET reserved_quantity = reserved_quantity - ?
+                WHERE id = ? AND reserved_quantity >= ?
+                """, quantity, id, quantity);
+    }
+
+    public boolean commitReservedStock(String id, int quantity) {
+        return jdbc.update("""
+                UPDATE products
+                SET stock_quantity = stock_quantity - ?, reserved_quantity = reserved_quantity - ?
+                WHERE id = ? AND stock_quantity IS NOT NULL
+                    AND stock_quantity >= ? AND reserved_quantity >= ?
+                """, quantity, quantity, id, quantity, quantity) == 1;
+    }
+
+    public boolean hasReservations(String id) {
+        return reservedQuantity(id) > 0;
+    }
+
+    public boolean canSetStock(String id, Integer stockQuantity) {
+        int reserved = reservedQuantity(id);
+        return reserved == 0 || (stockQuantity != null && stockQuantity >= reserved);
+    }
+
     public boolean skuExists(String sku, String exceptId) {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM products WHERE sku = ? AND id <> ?",
@@ -58,22 +100,22 @@ public class ProductRepository {
                 product.imageKey(), product.imageUrl());
     }
 
-    public void update(ProductRecord product) {
-        jdbc.update("""
+    public int update(ProductRecord product) {
+        return jdbc.update("""
                 UPDATE products
                 SET name = ?, category = ?, description = ?, price = ?, promotion_price = ?, sku = ?,
                     brand = ?, product_format = ?, stock_quantity = ?, published = ?, featured = ?,
                     image_key = ?, image_url = ?
-                WHERE id = ?
+                WHERE id = ? AND (reserved_quantity = 0 OR COALESCE(?, -1) >= reserved_quantity)
                 """,
                 product.name(), product.category(), product.description(), product.price(),
                 product.promotionPrice(), product.sku(), product.brand(), product.productFormat(),
                 product.stockQuantity(), product.published(), product.featured(), product.imageKey(),
-                product.imageUrl(), product.id());
+                product.imageUrl(), product.id(), product.stockQuantity());
     }
 
-    public void delete(String id) {
-        jdbc.update("DELETE FROM products WHERE id = ?", id);
+    public int delete(String id) {
+        return jdbc.update("DELETE FROM products WHERE id = ? AND reserved_quantity = 0", id);
     }
 
     @Transactional
