@@ -8,6 +8,14 @@ export interface Product {
   category: string;
   description: string;
   price: number;
+  promotionPrice: number | null;
+  sku: string | null;
+  brand: string | null;
+  productFormat: string | null;
+  stockQuantity: number | null;
+  published: boolean;
+  featured: boolean;
+  sortOrder: number;
   imageUrl: string;
 }
 

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, switchMap } from 'rxjs';
+import { Product } from './catalog.service';
 
 export interface AdminGalleryItem {
   id: string;
@@ -26,6 +27,20 @@ export interface GalleryFormValue {
   instagramUrl: string;
   published: boolean;
   groupId: string | null;
+}
+
+export interface ProductFormValue {
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  promotionPrice: number | null;
+  sku: string;
+  brand: string;
+  productFormat: string;
+  stockQuantity: number | null;
+  published: boolean;
+  featured: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -54,6 +69,29 @@ export class AdminService {
 
   getGalleryGroups(): Observable<AdminGalleryGroup[]> {
     return this.http.get<AdminGalleryGroup[]>('/api/admin/gallery/groups');
+  }
+
+  getProducts(): Observable<Product[]> {
+    return this.http.get<Product[]>('/api/admin/products');
+  }
+
+  createProduct(value: ProductFormValue, image: File): Observable<Product> {
+    return this.http.post<Product>('/api/admin/products', this.toProductFormData(value, image));
+  }
+
+  updateProduct(id: string, value: ProductFormValue, image?: File): Observable<Product> {
+    return this.http.put<Product>(
+      `/api/admin/products/${encodeURIComponent(id)}`,
+      this.toProductFormData(value, image)
+    );
+  }
+
+  deleteProduct(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/products/${encodeURIComponent(id)}`);
+  }
+
+  reorderProducts(ids: string[]): Observable<void> {
+    return this.http.put<void>('/api/admin/products/order', { ids });
   }
 
   createGalleryGroup(title: string, description = ''): Observable<AdminGalleryGroup> {
@@ -114,6 +152,23 @@ export class AdminService {
     if (image) {
       formData.append('image', image);
     }
+    return formData;
+  }
+
+  private toProductFormData(value: ProductFormValue, image?: File): FormData {
+    const formData = new FormData();
+    formData.append('name', value.name);
+    formData.append('category', value.category);
+    formData.append('description', value.description);
+    formData.append('price', String(value.price));
+    formData.append('promotionPrice', value.promotionPrice == null ? '' : String(value.promotionPrice));
+    formData.append('sku', value.sku);
+    formData.append('brand', value.brand);
+    formData.append('productFormat', value.productFormat);
+    formData.append('stockQuantity', value.stockQuantity == null ? '' : String(value.stockQuantity));
+    formData.append('published', String(value.published));
+    formData.append('featured', String(value.featured));
+    if (image) formData.append('image', image);
     return formData;
   }
 }

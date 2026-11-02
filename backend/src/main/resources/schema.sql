@@ -25,3 +25,27 @@ CREATE TABLE IF NOT EXISTS gallery_groups (
 ALTER TABLE gallery_groups ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE gallery_groups ADD COLUMN IF NOT EXISTS cover_item_id VARCHAR(36);
 ALTER TABLE gallery_groups ADD COLUMN IF NOT EXISTS description VARCHAR(2000) NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS products (
+    id VARCHAR(80) PRIMARY KEY,
+    name VARCHAR(120) NOT NULL,
+    category VARCHAR(80) NOT NULL,
+    description VARCHAR(2000) NOT NULL DEFAULT '',
+    price DECIMAL(10, 2) NOT NULL,
+    promotion_price DECIMAL(10, 2),
+    sku VARCHAR(80) UNIQUE,
+    brand VARCHAR(120),
+    product_format VARCHAR(120),
+    stock_quantity INTEGER,
+    published BOOLEAN NOT NULL DEFAULT FALSE,
+    featured BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    image_key VARCHAR(80),
+    image_url VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS product_catalog_migrations (
+    migration_id VARCHAR(80) PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

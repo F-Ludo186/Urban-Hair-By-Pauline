@@ -27,13 +27,13 @@ import { AdminService } from '../data/admin.service';
             <span class="admin-module-action">Gérer la galerie <span aria-hidden="true">→</span></span>
           </a>
 
-          <article class="admin-module-card admin-module-upcoming" aria-disabled="true">
-            <span class="admin-module-status">À venir</span>
+          <a class="admin-module-card" routerLink="/admin/boutique">
             <span class="admin-module-symbol" aria-hidden="true">◇</span>
             <p class="eyebrow">PRODUITS &amp; SOINS</p>
             <h2>Boutique</h2>
-            <p>Gestion du catalogue et des informations produits.</p>
-          </article>
+            <p>Gérez vos fiches, photos, prix, promotions, stocks et mises en avant.</p>
+            <span class="admin-module-action">Gérer la boutique <span aria-hidden="true">→</span></span>
+          </a>
 
           <article class="admin-module-card admin-module-upcoming" aria-disabled="true">
             <span class="admin-module-status">À venir</span>

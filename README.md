@@ -55,6 +55,8 @@ Sous PowerShell, `npm.cmd` évite le blocage de la stratégie d’exécution des
 
 L’administration est accessible depuis le lien du pied de page ou via `http://localhost:4200/admin`. Le tableau de bord présente les espaces de gestion disponibles ; la galerie se trouve dans `http://localhost:4200/admin/galerie`. Elle permet d’ajouter des photos à un groupe, puis de gérer les groupes : modifier leur titre et leur texte, choisir leur photo de couverture, réordonner les photos du groupe et réordonner les groupes. Chaque groupe s’affiche comme une vignette dans la grille publique ; un clic ouvre ses photos dans l’ordre choisi et affiche le texte du groupe. Supprimer un groupe conserve ses photos.
 
+La boutique est administrable depuis `http://localhost:4200/admin/boutique`. Les fiches produit comportent nom, catégorie, description, photo, prix TTC, promotion facultative, référence, marque, format, quantité en stock facultative, publication, mise en avant et ordre d’affichage. Les produits publiés apparaissent dans le catalogue public ; le bouton de contact par e-mail reste actif tant qu’aucun paiement en ligne n’est configuré. Les produits et les images téléversées sont conservés avec les données de galerie.
+
 Avant de lancer le backend, configurez un identifiant et un mot de passe réservés à l’administratrice. Dans PowerShell :
 
 ```powershell
