@@ -35,13 +35,13 @@ import { AdminService } from '../data/admin.service';
             <span class="admin-module-action">Gérer la boutique <span aria-hidden="true">→</span></span>
           </a>
 
-          <article class="admin-module-card admin-module-upcoming" aria-disabled="true">
-            <span class="admin-module-status">À venir</span>
+          <a class="admin-module-card" routerLink="/admin/accueil">
             <span class="admin-module-symbol" aria-hidden="true">⌂</span>
             <p class="eyebrow">PRÉSENTATION DU SALON</p>
             <h2>Page d’accueil</h2>
-            <p>Gestion des textes et des contenus de présentation.</p>
-          </article>
+            <p>Personnalisez les textes, les photos, la disposition et l’ordre des sections.</p>
+            <span class="admin-module-action">Gérer l’accueil <span aria-hidden="true">→</span></span>
+          </a>
         </section>
 
         <button class="admin-dashboard-logout" type="button" (click)="logout()">Se déconnecter</button>

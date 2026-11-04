@@ -7,12 +7,12 @@ Ce document décrit l’architecture et les choix visuels existants. Le consulte
 - `frontend/` : application Angular standalone, écrite en TypeScript.
   - `src/app/app.component.ts` : coque du site public (bandeau, en-tête, navigation et pied de page).
   - `src/app/app.routes.ts` : routes et titres des pages.
-  - `src/app/pages/` : pages `home`, `shop`, `gallery`, `admin-home`, `admin`, `admin-shop` et `admin-login`.
+  - `src/app/pages/` : pages `home`, `shop`, `gallery`, `admin-home`, `admin-homepage`, `admin`, `admin-shop` et `admin-login`.
   - `src/app/data/` : services de données et garde d’accès à l’administration.
   - `src/styles.css` : styles globaux et charte visuelle publique et admin.
   - `public/images/` : ressources statiques, accessibles depuis `/images/...`.
 - `backend/` : API REST Spring Boot en Java 17.
-  - `src/main/java/fr/urbanhair/` : contrôleurs et domaines `product`, `gallery`, `admin`, `storage` et `config`.
+  - `src/main/java/fr/urbanhair/` : contrôleurs et domaines `product`, `gallery`, `home`, `admin`, `storage` et `config`.
   - `src/main/resources/schema.sql` : schéma de données.
 
 ## Routes et responsabilités
@@ -20,7 +20,8 @@ Ce document décrit l’architecture et les choix visuels existants. Le consulte
 - `/` : accueil (`HomeComponent`).
 - `/boutique` : catalogue (`ShopComponent`).
 - `/galerie` : réalisations du salon (`GalleryComponent`), données par l’API.
-- Le lien Administration du pied de page mène à `/admin/login` ou au tableau de bord protégé `/admin`. `/admin` présente les outils de gestion disponibles ; `/admin/galerie` ouvre la gestion de la galerie et `/admin/boutique` place les réglages globaux pliables et l’ajout de produit dans un panneau de gestion à gauche, avec le catalogue à droite. Chaque route de gestion est protégée par `adminGuard`.
+- Le lien Administration du pied de page mène à `/admin/login` ou au tableau de bord protégé `/admin`. `/admin` présente les outils de gestion disponibles ; `/admin/accueil` permet de modifier les quatre sections de la page d’accueil, leurs images, leurs dispositions et leur ordre, avec les commandes à gauche et un aperçu fidèle à droite ; `/admin/galerie` ouvre la gestion de la galerie et `/admin/boutique` place les réglages globaux pliables et l’ajout de produit dans un panneau de gestion à gauche, avec le catalogue à droite. Chaque route de gestion est protégée par `adminGuard`.
+- Le contenu de la page d’accueil est persisté par le backend dans `home_sections`. Ses images téléversées utilisent le stockage d’images partagé ; l’aperçu d’administration et la page publique réutilisent le même rendu de sections.
 - Les réalisations sont gérées dans des groupes titrés et décrits. Chaque groupe possède un ordre d’affichage et une photo de couverture ; ses photos ont leur propre ordre. Dans l’administration, le texte, la couverture et le tri se modifient depuis le groupe. La page publique affiche les couvertures dans une grille commune ; cliquer ouvre les photos du groupe dans l’ordre choisi avec le texte du groupe.
 - Les produits sont persistés par le backend et gérés dans `/admin/boutique` (nom, catégorie, description, photo, prix TTC et promotionnel, SKU, marque, format, stock, publication, mise en avant et ordre). La boutique propose un panier, le retrait gratuit au salon et la livraison à tarif configuré ; le paiement unique par carte passe par Stripe Checkout. Les commandes et réservations de stock sont enregistrées côté backend, et le stock n’est décrémenté qu’après validation du webhook Stripe signé. Les réglages de livraison, retrait et notification sont dans l’administration.
 - Le backend expose l’API sous `/api`. Le proxy Angular de développement relaie ces requêtes vers Spring Boot.

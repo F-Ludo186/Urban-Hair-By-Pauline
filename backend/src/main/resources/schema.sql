@@ -26,6 +26,38 @@ ALTER TABLE gallery_groups ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL 
 ALTER TABLE gallery_groups ADD COLUMN IF NOT EXISTS cover_item_id VARCHAR(36);
 ALTER TABLE gallery_groups ADD COLUMN IF NOT EXISTS description VARCHAR(2000) NOT NULL DEFAULT '';
 
+CREATE TABLE IF NOT EXISTS home_sections (
+    id VARCHAR(20) PRIMARY KEY,
+    eyebrow VARCHAR(120) NOT NULL DEFAULT '',
+    title VARCHAR(240) NOT NULL,
+    body VARCHAR(2000) NOT NULL DEFAULT '',
+    link_label VARCHAR(120) NOT NULL DEFAULT '',
+    link_url VARCHAR(500) NOT NULL DEFAULT '',
+    signature VARCHAR(120) NOT NULL DEFAULT '',
+    layout VARCHAR(40) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    image_key VARCHAR(80),
+    image_url VARCHAR(1000)
+);
+
+INSERT INTO home_sections (id, eyebrow, title, body, link_label, link_url, signature, layout, sort_order, image_url)
+SELECT 'hero', 'SALON DE COIFFURE · BEAUTÉ AU NATUREL', 'Révélez votre beauté singulière.', 'Une parenthèse de douceur, des gestes experts et une coiffure qui vous ressemble.', 'Découvrir le salon', 'mailto:bonjour@urbanhair.fr', '', 'hero', 0,
+       'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=2000&q=85'
+WHERE NOT EXISTS (SELECT 1 FROM home_sections WHERE id = 'hero');
+
+INSERT INTO home_sections (id, eyebrow, title, body, link_label, link_url, signature, layout, sort_order)
+SELECT 'intro', 'L’ESPRIT URBAN HAIR', 'La beauté prend son temps.', 'Chez Urban Hair by Pauline, chaque rendez-vous est une rencontre. Nous imaginons avec vous une coupe et une couleur qui révèlent votre personnalité, dans une atmosphère chaleureuse et apaisante.', 'Explorer nos réalisations', '/galerie', '', 'text', 1
+WHERE NOT EXISTS (SELECT 1 FROM home_sections WHERE id = 'intro');
+
+INSERT INTO home_sections (id, eyebrow, title, body, link_label, link_url, signature, layout, sort_order, image_url)
+SELECT 'feature', 'LE SALON', 'Un savoir-faire tout en délicatesse.', 'Des conseils personnalisés, des produits soigneusement sélectionnés et une attention portée à chaque détail.', 'Voir la boutique', '/boutique', '', 'image-left', 2,
+       'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1100&q=85'
+WHERE NOT EXISTS (SELECT 1 FROM home_sections WHERE id = 'feature');
+
+INSERT INTO home_sections (id, eyebrow, title, body, link_label, link_url, signature, layout, sort_order)
+SELECT 'quote', '', '', 'Parce que se sentir bien dans ses cheveux, c’est déjà se sentir un peu plus soi.', '', '', 'PAULINE · FONDATRICE', 'centered', 3
+WHERE NOT EXISTS (SELECT 1 FROM home_sections WHERE id = 'quote');
+
 CREATE TABLE IF NOT EXISTS products (
     id VARCHAR(80) PRIMARY KEY,
     name VARCHAR(120) NOT NULL,

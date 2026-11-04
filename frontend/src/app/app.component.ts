@@ -28,7 +28,9 @@ import { CartItem, CartService } from './data/cart.service';
           <a routerLink="/galerie" routerLinkActive="active">Galerie</a>
         </nav>
         <div class="site-header-actions">
-          <a class="header-cta" href="mailto:bonjour@urbanhair.fr">Prendre rendez-vous <span>↗</span></a>
+          <a class="header-cta" href="https://www.planity.com/urban-hair-by-pauline-37800-sainte-catherine-de-fierbois" target="_blank" >
+            Prendre rendez-vous <span>↗</span>
+          </a>
         </div>
       </header>
     }

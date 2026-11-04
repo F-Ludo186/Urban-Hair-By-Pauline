@@ -67,6 +67,23 @@ h1 em, h2 em { font-weight: 400; }
 .quote-mark { color: var(--color-taupe); font-family: var(--font-heading); font-size: 72px; line-height: .8; }
 .quote blockquote { max-width: 740px; margin: 14px auto 22px; font-size: clamp(32px, 4vw, 47px); line-height: 1.2; }
 .quote p { font-size: 8px; letter-spacing: .2em; }
+.hero-centered .hero-content { text-align: center; }
+.hero-centered .hero-copy { margin-right: auto; margin-left: auto; }
+.intro-grid h2, .home-split-copy h2, .feature-copy h2 { white-space: pre-line; }
+.home-split-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10%; }
+.home-split-layout.image-left img { order: -1; }
+.home-split-layout > img { width: 100%; height: 440px; object-fit: cover; }
+.home-split-copy { max-width: 480px; }
+.home-split-copy h2 { margin: 0 0 20px; font-size: clamp(42px, 5vw, 64px); line-height: .98; }
+.home-split-copy p { margin: 0 0 24px; color: #625b53; font-size: 12px; line-height: 2; }
+.feature-band.feature-image-right .feature-image { order: 2; }
+.feature-band.feature-text-only { grid-template-columns: 1fr; }
+.feature-band.feature-text-only .feature-copy { width: min(720px, 90%); max-width: none; margin: 0 auto; }
+.home-quote-image { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8%; padding-right: 6%; padding-left: 6%; text-align: left; }
+.home-quote-image.image-left img { order: -1; }
+.home-quote-image img { width: 100%; height: 400px; object-fit: cover; }
+.home-quote-image blockquote { font-size: clamp(30px, 4vw, 47px); }
+.home-load-error { margin: 20px auto; width: min(var(--content-width), 88%); border-radius: 4px; padding: 12px 15px; background: #f6e7e3; color: #8b3426; font-size: 12px; }
 .page-hero { padding: 92px 20px 68px; text-align: center; }
 .page-hero .eyebrow { margin-bottom: 15px; color: #887561; }
 .page-hero h1 { margin: 0 0 10px; font-size: clamp(56px, 7vw, 82px); line-height: 1; }
@@ -609,4 +626,60 @@ a.admin-module-card:hover { transform: translateY(-3px); border-color: var(--col
   .announcement { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 0 8px; }
   .announcement-message { grid-column: 1; font-size: 7px; letter-spacing: .08em; }
   .announcement .shop-cart-toggle { grid-column: 2; padding-left: 8px; font-size: 7px; letter-spacing: .04em; }
+}
+
+.home-admin-main { max-width: 1800px; margin: 0 auto; padding: 26px 28px 60px; }
+.home-admin-workspace { display: grid; grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); align-items: start; gap: 28px; }
+.home-manager { position: sticky; top: 100px; max-height: calc(100vh - 120px); overflow-y: auto; border: 1px solid #e4ddd4; border-radius: 8px; padding: 20px; background: #fff; box-shadow: 0 8px 30px #201e1b08; }
+.home-section-order { margin: 18px 0; border-top: 1px solid #eee9e3; border-bottom: 1px solid #eee9e3; padding: 14px 0; }
+.home-section-order h3 { margin: 0 0 8px; color: #776f66; font-size: 9px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
+.home-section-order ol { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.home-section-order li { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-radius: 4px; padding: 5px 8px; background: #faf9f7; font-size: 10px; }
+.home-section-order li div { display: flex; }
+.home-section-order button { width: 28px; height: 28px; border: 0; border-radius: 3px; background: transparent; color: #625b53; font-size: 14px; cursor: pointer; }
+.home-section-order button:hover:not(:disabled) { background: #e9e2d9; }
+.home-section-order button:disabled { opacity: .35; cursor: default; }
+.home-section-editor { margin: 14px 0; padding: 16px; }
+.home-section-editor .admin-editor-heading { margin-bottom: 14px; }
+.home-section-editor .admin-editor-heading h2 { font-size: 27px; }
+.home-section-editor .admin-editor-heading .eyebrow { font-size: 8px; }
+.home-section-editor form { display: grid; gap: 12px; }
+.home-section-editor .admin-field { gap: 5px; font-size: 10px; }
+.home-section-editor .admin-field input, .home-section-editor .admin-field select, .home-section-editor .admin-field textarea { padding: 9px 10px; font-size: 11px; }
+.home-section-editor .admin-field input[type="file"] { padding: 7px; }
+.home-section-editor .admin-form-actions { margin-top: 2px; padding-top: 12px; }
+.home-section-editor .home-remove-image { font-size: 10px; }
+.home-image-preview { display: block; width: min(250px, 100%); height: 140px; margin-top: 7px; border-radius: 4px; object-fit: cover; }
+.home-preview-page { max-height: calc(100vh - 180px); overflow-y: auto; }
+.home-preview-page .hero { min-height: 360px; height: 430px; max-height: 430px; }
+.home-preview-page .hero h1 { font-size: clamp(44px, 6vw, 72px); }
+.home-preview-page .intro { padding-top: 55px; padding-bottom: 55px; }
+.home-preview-page .feature-band { min-height: 340px; }
+.home-preview-page .feature-image { min-height: 340px; }
+.home-preview-page .feature-copy { padding: 45px 9%; }
+.home-preview-page .home-split-layout > img { height: 280px; }
+.home-preview-page .quote { padding-top: 55px; padding-bottom: 55px; }
+.home-preview-page .home-quote-image img { height: 280px; }
+.home-preview-page .preview-footer { padding: 18px; background: var(--color-black); color: var(--color-ivory); text-align: center; font-size: 9px; letter-spacing: .1em; }
+
+@media (max-width: 1050px) {
+  .home-admin-workspace { grid-template-columns: minmax(290px, 350px) minmax(0, 1fr); gap: 16px; }
+  .home-manager { padding: 16px; }
+}
+@media (max-width: 760px) {
+  .home-admin-workspace { grid-template-columns: minmax(0, 1fr); }
+  .home-manager { position: static; max-height: none; }
+  .home-admin-workspace .gallery-live-preview { grid-row: 1; }
+  .home-preview-page { max-height: none; }
+}
+@media (max-width: 650px) {
+  .home-admin-main { padding: 18px 13px 45px; }
+  .home-split-layout, .home-quote-image { grid-template-columns: 1fr; gap: 24px; }
+  .home-split-layout.image-left img, .home-quote-image.image-left img { order: 0; }
+  .home-split-layout > img, .home-quote-image img { height: 280px; }
+  .home-split-copy { max-width: none; }
+  .home-preview-page .hero { min-height: 320px; height: 360px; }
+  .home-preview-page .hero h1 { font-size: 48px; }
+  .home-preview-page .feature-band { grid-template-columns: 1fr; }
+  .home-preview-page .feature-image { min-height: 230px; }
 }

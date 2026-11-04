@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, switchMap } from 'rxjs';
 import { Product } from './catalog.service';
+import { HomeSection } from './home-content.service';
 
 export interface AdminGalleryItem {
   id: string;
@@ -92,6 +93,28 @@ export class AdminService {
 
   getShopSettings(): Observable<AdminShopSettings> {
     return this.http.get<AdminShopSettings>('/api/admin/shop-settings');
+  }
+
+  getHomeSections(): Observable<HomeSection[]> {
+    return this.http.get<HomeSection[]>('/api/admin/home');
+  }
+
+  saveHomeSection(section: HomeSection, image?: File, removeImage = false): Observable<HomeSection> {
+    const formData = new FormData();
+    formData.append('eyebrow', section.eyebrow);
+    formData.append('title', section.title);
+    formData.append('body', section.body);
+    formData.append('linkLabel', section.linkLabel);
+    formData.append('linkUrl', section.linkUrl);
+    formData.append('signature', section.signature);
+    formData.append('layout', section.layout);
+    formData.append('removeImage', String(removeImage));
+    if (image) formData.append('image', image);
+    return this.http.put<HomeSection>(`/api/admin/home/${encodeURIComponent(section.id)}`, formData);
+  }
+
+  reorderHomeSections(ids: string[]): Observable<void> {
+    return this.http.put<void>('/api/admin/home/sections/order', { ids });
   }
 
   saveShopSettings(settings: ShopSettings): Observable<AdminShopSettings> {
