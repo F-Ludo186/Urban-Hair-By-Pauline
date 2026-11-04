@@ -28,6 +28,7 @@ import { CartItem, CartService } from './data/cart.service';
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">Accueil</a>
           <a routerLink="/boutique" routerLinkActive="active">Boutique</a>
           <a routerLink="/galerie" routerLinkActive="active">Galerie</a>
+          <a routerLink="/contact" routerLinkActive="active">Contact</a>
         </nav>
         <div class="site-header-actions">
           <a class="header-cta" href="https://www.planity.com/urban-hair-by-pauline-37800-sainte-catherine-de-fierbois" target="_blank" >
@@ -41,7 +42,11 @@ import { CartItem, CartService } from './data/cart.service';
       <footer class="site-footer">
         <a class="brand footer-brand" routerLink="/">URBAN HAIR<span>by Pauline</span></a>
         <p>Un lieu, une signature, votre beauté.</p>
-        <div class="footer-links"><a routerLink="/boutique">Boutique</a><a routerLink="/galerie">Galerie</a><a href="mailto:bonjour@urbanhair.fr">Contact</a><a class="footer-admin-link" routerLink="/admin">Administration</a></div>
+        <div class="footer-links">
+        <a routerLink="/boutique">Boutique</a>
+        <a routerLink="/galerie">Galerie</a>
+        <a routerLink="/contact">Contact</a>
+        <a class="footer-admin-link" routerLink="/admin">Administration</a></div>
         <small>© 2026 Urban Hair by Pauline</small>
       </footer>
     }

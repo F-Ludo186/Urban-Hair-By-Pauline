@@ -702,3 +702,70 @@ a.admin-module-card:hover { transform: translateY(-3px); border-color: var(--col
   .home-preview-page .feature-image { min-height: 230px; }
 }
 
+.contact-page {
+  display: grid;
+  justify-items: center;
+  padding-bottom: var(--section-spacing);
+}
+
+.contact-card {
+  width: min(620px, 100%);
+  border: var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: clamp(24px, 6vw, 52px);
+  background: var(--color-white);
+}
+
+.contact-card > .eyebrow {
+  margin-bottom: 8px;
+  color: #887561;
+}
+
+.contact-card h2 {
+  margin: 0 0 28px;
+  font-size: clamp(34px, 5vw, 48px);
+  line-height: 1;
+}
+
+.contact-detail {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: var(--border-subtle);
+  padding: 18px 0;
+}
+
+.contact-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-ivory);
+  color: var(--color-black);
+  font-size: 19px;
+}
+
+.contact-detail > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.contact-detail small {
+  color: #776f66;
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.contact-detail strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.contact-appointment {
+  margin: 12px 0 24px;
+  color: #625b53;
+  font-size: 12px;
+}
