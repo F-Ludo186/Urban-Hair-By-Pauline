@@ -21,7 +21,9 @@ import { CartItem, CartService } from './data/cart.service';
         }
       </div>
       <header class="site-header">
-        <a class="brand" routerLink="/" aria-label="Urban Hair, accueil">URBAN HAIR<span>by Pauline</span></a>
+        <a class="brand brand-logo" routerLink="/" aria-label="Urban Hair, accueil">
+          <img src="/images/logos/logo.jpg" alt="Urban Hair by Pauline">
+        </a>
         <nav aria-label="Navigation principale">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">Accueil</a>
           <a routerLink="/boutique" routerLinkActive="active">Boutique</a>

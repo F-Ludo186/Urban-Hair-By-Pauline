@@ -25,6 +25,24 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .site-header-actions { display: flex; align-items: center; gap: 20px; }
 .brand { font-size: 16px; line-height: 1.15; letter-spacing: .13em; font-weight: 600; }
 .brand span { display: block; margin-top: 5px; text-align: center; font-family: var(--font-heading); font-size: 15px; font-weight: 400; font-style: italic; letter-spacing: .04em; }
+.brand-logo {
+  display: grid;
+  width: 70px;
+  height: 70px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--color-black);
+  border-radius: 50%;
+  background: var(--color-black);
+}
+
+.brand-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
 nav { display: flex; gap: 42px; height: 100%; align-items: center; }
 nav a { position: relative; font-size: 11px; letter-spacing: .07em; }
 nav a::after { content: ''; position: absolute; bottom: -9px; left: 0; width: 0; height: 1px; background: var(--color-black); transition: width .2s; }
@@ -683,3 +701,4 @@ a.admin-module-card:hover { transform: translateY(-3px); border-color: var(--col
   .home-preview-page .feature-band { grid-template-columns: 1fr; }
   .home-preview-page .feature-image { min-height: 230px; }
 }
+
