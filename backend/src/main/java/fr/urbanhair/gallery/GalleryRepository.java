@@ -165,7 +165,7 @@ public class GalleryRepository {
     private void normalizeGroupItems(String groupId) {
         if (groupId == null) return;
         List<String> ids = jdbc.query("SELECT id FROM gallery_items WHERE group_id = ? ORDER BY sort_order, created_at, id", (result, row) -> result.getString(1), groupId);
-        for (int index = 0; index < ids.size(); index++) jdbc.update("UPDATE gallery_items SET sort_order = ? WHERE id = ?", index, ids.get(index));
+        batchUpdateOrder("UPDATE gallery_items SET sort_order = ? WHERE id = ?", ids, null);
     }
 
     private int nextItemSortOrder(String groupId) {

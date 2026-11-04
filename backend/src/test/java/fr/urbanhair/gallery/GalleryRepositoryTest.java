@@ -40,6 +40,23 @@ class GalleryRepositoryTest {
                 .containsExactly("item-3", "item-2", "item-1");
     }
 
+    @Test
+    void deletingGalleryItemNormalizesRemainingGroupOrder() {
+        jdbc.update("INSERT INTO gallery_groups (id, title) VALUES (?, ?)", "group-1", "Groupe 1");
+        insertItem("item-1", "group-1", 0);
+        insertItem("item-2", "group-1", 1);
+        insertItem("item-3", "group-1", 2);
+
+        repository.delete("item-2");
+
+        assertThat(jdbc.queryForList(
+                "SELECT id FROM gallery_items WHERE group_id = ? ORDER BY sort_order", String.class, "group-1"))
+                .containsExactly("item-1", "item-3");
+        assertThat(jdbc.queryForList(
+                "SELECT sort_order FROM gallery_items WHERE group_id = ? ORDER BY sort_order", Integer.class, "group-1"))
+                .containsExactly(0, 1);
+    }
+
     private void insertItem(String id, String groupId, int sortOrder) {
         jdbc.update("""
                 INSERT INTO gallery_items
