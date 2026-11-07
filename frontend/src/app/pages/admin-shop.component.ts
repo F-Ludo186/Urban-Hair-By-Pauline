@@ -74,7 +74,8 @@ import { Product } from '../data/catalog.service';
                       <label class="admin-field">Prix promotionnel TTC (€) <span class="admin-optional">Facultatif</span><input name="promotionPrice" type="number" [(ngModel)]="form.promotionPrice" min="0" max="99999999.99" step="0.01"></label>
                       <label class="admin-field">Quantité en stock <span class="admin-optional">Laisser vide si non suivie</span><input name="stockQuantity" type="number" [(ngModel)]="form.stockQuantity" min="0" step="1"></label>
                       <label class="admin-field admin-field-wide">Description<textarea name="description" [(ngModel)]="form.description" maxlength="2000" rows="4" placeholder="Bénéfices, conseils d’utilisation, composition…"></textarea></label>
-                      <label class="admin-field admin-field-wide">Photo du produit <span class="admin-optional">JPG ou PNG · 10 Mo max.{{ editingId ? ' · laisser vide pour conserver la photo actuelle' : '' }}</span><input name="image" type="file" accept="image/jpeg,image/png" (change)="selectImage($event)" [required]="!editingId"><img [src]="imagePreviewUrl || (editingProduct?.imageUrl ?? '')" [hidden]="!imagePreviewUrl && !editingProduct?.imageUrl" class="shop-product-image-preview" alt="Aperçu de la photo produit"></label>
+                      <label class="admin-field admin-field-wide">URL externe de l’image <span class="admin-optional">HTTPS · ImageKit ou autre hébergeur{{ editingId ? ' · vide pour conserver l’image actuelle' : '' }}</span><input name="imageUrl" type="url" [(ngModel)]="form.imageUrl" (ngModelChange)="selectExternalImageUrl()" maxlength="1000" pattern="https://.+" [required]="!editingId && !selectedImage"></label>
+                      <label class="admin-field admin-field-wide">Ou téléverser une photo <span class="admin-optional">JPG ou PNG · 10 Mo max.{{ editingId ? ' · laisser vide pour conserver l’image actuelle' : '' }}</span><input name="image" type="file" accept="image/jpeg,image/png" (change)="selectImage($event)" [required]="!editingId && !form.imageUrl"><img [src]="imagePreviewUrl || form.imageUrl || (editingProduct?.imageUrl ?? '')" [hidden]="!imagePreviewUrl && !form.imageUrl && !editingProduct?.imageUrl" class="shop-product-image-preview" alt="Aperçu de la photo produit"></label>
                       <label class="admin-publish-toggle"><input name="published" type="checkbox" [(ngModel)]="form.published"> Publier dans la boutique</label>
                       <label class="admin-publish-toggle"><input name="featured" type="checkbox" [(ngModel)]="form.featured"> Mettre en avant</label>
                     </div>
@@ -233,6 +234,7 @@ export class AdminShopComponent implements OnInit, OnDestroy {
       brand: product.brand ?? '',
       productFormat: product.productFormat ?? '',
       stockQuantity: product.stockQuantity,
+      imageUrl: product.imageUrl.startsWith('https://') ? product.imageUrl : '',
       published: product.published,
       featured: product.featured
     };
@@ -251,15 +253,22 @@ export class AdminShopComponent implements OnInit, OnDestroy {
     } else if (!['image/jpeg', 'image/png'].includes(image.type) && !/\.(jpe?g|png)$/i.test(image.name)) {
       this.imageError = 'Choisissez une image JPG ou PNG.';
     } else {
+      this.form.imageUrl = '';
       this.selectedImage = image;
       this.imagePreviewUrl = URL.createObjectURL(image);
     }
     if (this.imageError) input.value = '';
   }
 
+  selectExternalImageUrl(): void {
+    if (!this.form.imageUrl) return;
+    this.selectedImage = null;
+    this.releasePreviewUrl();
+  }
+
   saveProduct(): void {
-    if (this.saving || this.imageError || (!this.editingId && !this.selectedImage)) {
-      if (!this.editingId && !this.selectedImage && !this.imageError) this.imageError = 'Ajoutez une photo au produit.';
+    if (this.saving || this.imageError || (!this.editingId && !this.selectedImage && !this.form.imageUrl)) {
+      if (!this.editingId && !this.selectedImage && !this.form.imageUrl && !this.imageError) this.imageError = 'Ajoutez une photo au produit ou saisissez son URL HTTPS.';
       return;
     }
     if (this.form.promotionPrice !== null && this.form.promotionPrice >= this.form.price) {
@@ -271,7 +280,7 @@ export class AdminShopComponent implements OnInit, OnDestroy {
     this.saving = true;
     const request = this.editingId
       ? this.admin.updateProduct(this.editingId, this.form, this.selectedImage ?? undefined)
-      : this.admin.createProduct(this.form, this.selectedImage!);
+      : this.admin.createProduct(this.form, this.selectedImage ?? undefined);
     request.pipe(finalize(() => this.saving = false)).subscribe({
       next: product => {
         if (this.editingId) {
@@ -335,6 +344,7 @@ export class AdminShopComponent implements OnInit, OnDestroy {
       name: '',
       category: '',
       description: '',
+      imageUrl: '',
       price: 0,
       promotionPrice: null,
       sku: '',

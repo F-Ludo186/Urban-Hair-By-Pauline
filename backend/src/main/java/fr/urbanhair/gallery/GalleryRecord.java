@@ -6,6 +6,7 @@ public record GalleryRecord(
         String caption,
         String category,
         String imageKey,
+        String imageUrl,
         String instagramUrl,
         boolean published,
         int sortOrder,

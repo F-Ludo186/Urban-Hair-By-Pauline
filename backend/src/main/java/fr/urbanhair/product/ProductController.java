@@ -2,6 +2,7 @@ package fr.urbanhair.product;
 
 import fr.urbanhair.storage.ImageNotFoundException;
 import fr.urbanhair.storage.ImageUploadService;
+import fr.urbanhair.storage.ExternalImageUrl;
 import jakarta.validation.Valid;
 import java.util.HashSet;
 import java.util.List;
@@ -58,15 +59,15 @@ public class ProductController {
 
     @PostMapping(value = "/admin/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Product> create(@Valid @ModelAttribute ProductForm form, BindingResult validation) {
-        validate(form, validation, true);
+        String imageUrl = validate(form, validation, true);
         String sku = normalizedSku(form.getSku());
         ensureSkuAvailable(sku, null);
-        String imageKey = storeImage(form);
-        ProductRecord record = toRecord(UUID.randomUUID().toString(), form, sku, imageKey, null, 0);
+        String imageKey = hasImageFile(form) ? storeImage(form) : null;
+        ProductRecord record = toRecord(UUID.randomUUID().toString(), form, sku, imageKey, imageUrl, 0);
         try {
             repository.insert(record);
         } catch (RuntimeException exception) {
-            images.delete(imageKey);
+            if (imageKey != null) images.delete(imageKey);
             throw exception;
         }
         Product created = findById(record.id());
@@ -78,7 +79,7 @@ public class ProductController {
             @PathVariable("id") String id,
             @Valid @ModelAttribute ProductForm form,
             BindingResult validation) {
-        validate(form, validation, false);
+        String requestedImageUrl = validate(form, validation, false);
         ProductRecord current = findRecord(id);
         if (!repository.canSetStock(id, form.getStockQuantity())) {
             throw new ResponseStatusException(
@@ -86,9 +87,10 @@ public class ProductController {
         }
         String sku = normalizedSku(form.getSku());
         ensureSkuAvailable(sku, id);
-        boolean replaceImage = form.getImage() != null && !form.getImage().isEmpty();
-        String imageKey = replaceImage ? storeImage(form) : current.imageKey();
-        String imageUrl = replaceImage ? null : current.imageUrl();
+        boolean replaceImage = hasImageFile(form);
+        boolean replaceWithUrl = requestedImageUrl != null;
+        String imageKey = replaceImage ? storeImage(form) : replaceWithUrl ? null : current.imageKey();
+        String imageUrl = replaceImage ? null : replaceWithUrl ? requestedImageUrl : current.imageUrl();
         ProductRecord updated = toRecord(id, form, sku, imageKey, imageUrl, current.sortOrder());
         int updatedRows;
         try {
@@ -102,7 +104,7 @@ public class ProductController {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Le stock ne peut pas être inférieur aux quantités réservées pour des commandes en cours.");
         }
-        if (replaceImage && current.imageKey() != null) images.delete(current.imageKey());
+        if ((replaceImage || replaceWithUrl) && current.imageKey() != null) images.delete(current.imageKey());
         return findById(id);
     }
 
@@ -132,7 +134,7 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    private void validate(ProductForm form, BindingResult result, boolean creating) {
+    private String validate(ProductForm form, BindingResult result, boolean creating) {
         if (result.hasErrors()) {
             String message = result.getFieldErrors().stream()
                     .map(error -> error.getField() + " : " + error.getDefaultMessage())
@@ -140,13 +142,29 @@ public class ProductController {
                     .orElse("Les informations saisies sont invalides.");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
         }
+        String imageUrl = normalizeImageUrl(form.getImageUrl());
+        boolean hasImageFile = hasImageFile(form);
+        if (hasImageFile && imageUrl != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choisissez un fichier ou une URL pour la photo, pas les deux.");
+        }
         if (form.getPromotionPrice() != null && form.getPromotionPrice().compareTo(form.getPrice()) >= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le prix promotionnel doit être inférieur au prix de vente.");
         }
-        if (creating && (form.getImage() == null || form.getImage().isEmpty())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ajoutez une photo au produit.");
+        if (creating && !hasImageFile && imageUrl == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ajoutez une photo au produit ou saisissez son URL HTTPS.");
+        }
+        return imageUrl;
+    }
+
+    private String normalizeImageUrl(String imageUrl) {
+        try {
+            return ExternalImageUrl.normalize(imageUrl);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }
     }
+
+    private boolean hasImageFile(ProductForm form) { return form.getImage() != null && !form.getImage().isEmpty(); }
 
     private void ensureSkuAvailable(String sku, String id) {
         if (sku != null && repository.skuExists(sku, id)) {

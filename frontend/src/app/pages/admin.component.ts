@@ -1,7 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize, timeout } from 'rxjs';
+import { Observable, finalize, of, switchMap, timeout } from 'rxjs';
 import { AdminGalleryGroup, AdminGalleryItem, AdminService, GalleryFormValue } from '../data/admin.service';
 
 @Component({
@@ -25,6 +25,15 @@ import { AdminGalleryGroup, AdminGalleryItem, AdminService, GalleryFormValue } f
             <input type="file" accept="image/jpeg,image/png" multiple (change)="selectImages($event)" [disabled]="busy" aria-label="Choisir une ou plusieurs photos">
             <span class="upload-icon">＋</span><strong>Déposez vos photos ici</strong><span>ou cliquez pour parcourir · JPG ou PNG · 10 Mo max.</span>
           </label>
+          <details class="admin-editor gallery-url-editor">
+            <summary>Ajouter une photo depuis une URL HTTPS</summary>
+            <form (ngSubmit)="addExternalGalleryImage()" #externalImageForm="ngForm">
+              <label class="admin-field">URL directe de l’image<input name="externalImageUrl" type="url" [(ngModel)]="externalImageUrl" (ngModelChange)="suggestExternalImageTitle($event)" maxlength="1000" pattern="https://.+" placeholder="https://…" required></label>
+              <label class="admin-field">Titre de la photo et du nouveau groupe<input name="externalImageTitle" [(ngModel)]="externalImageTitle" maxlength="120" required></label>
+              <label class="admin-field">Groupe<select name="externalImageGroupId" [(ngModel)]="externalImageGroupId" required>@for (group of galleryGroups; track group.id) {<option [ngValue]="group.id">{{ group.title }}</option>}<option value="__new__">Créer un nouveau groupe</option></select></label>
+              <button class="button button-dark full-button" type="submit" [disabled]="busy || !externalImageForm.valid">{{ busy ? 'Ajout en cours…' : 'Ajouter la photo par URL' }}</button>
+            </form>
+          </details>
           @if (imageErrorMessage) { <p class="admin-error" role="alert">{{ imageErrorMessage }}</p> }
           @if (pendingFiles.length) {
             <div class="pending-files">
@@ -79,9 +88,12 @@ import { AdminGalleryGroup, AdminGalleryItem, AdminService, GalleryFormValue } f
               @if (previewCards.length) {
                 <section class="preview-gallery" aria-label="Groupes de la galerie">
                   @for (card of previewCards; track card.id) {
-                    <figure>
-                      <img [src]="card.item.imageUrl" [alt]="card.title"><figcaption><strong>{{ card.title }}</strong>@if (card.description) { <p>{{ card.description }}</p> }</figcaption>
-                    </figure>
+                    <div class="preview-group-card">
+                      <figure role="button" tabindex="0" (click)="openPreviewGroup(card.id)" (keydown.enter)="openPreviewGroup(card.id)" (keydown.space)="openPreviewGroup(card.id); $event.preventDefault()" [attr.aria-label]="card.title + ', ' + card.items.length + ' photos'">
+                        <img [src]="card.item.imageUrl" [alt]="card.title"><figcaption><strong>{{ card.title }}</strong><small>{{ card.items.length }} {{ card.items.length > 1 ? 'photos' : 'photo' }}</small></figcaption>
+                      </figure>
+                      <button class="preview-group-edit" type="button" (click)="editPreviewGroup(card.id)" [disabled]="busy" [attr.aria-label]="'Modifier le groupe ' + card.title">Modifier</button>
+                    </div>
                   }
                 </section>
               } @else { <p class="preview-empty">Les prochaines réalisations arrivent bientôt.</p> }
@@ -91,12 +103,31 @@ import { AdminGalleryGroup, AdminGalleryItem, AdminService, GalleryFormValue } f
           </div>
         </main>
       </div>
+      @if (previewAlbum; as album) {
+        <div class="photo-lightbox" (click)="closePreviewGroup()">
+          <section class="photo-lightbox-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'Photos du groupe ' + album.title" (click)="$event.stopPropagation()">
+            <button class="lightbox-close" type="button" (click)="closePreviewGroup()" aria-label="Fermer les photos">×</button>
+            <div class="photo-lightbox-image">
+              <button class="lightbox-arrow lightbox-previous" type="button" (click)="movePreviewPhoto(-1)" [disabled]="previewPhotoIndex === 0" aria-label="Photo précédente">‹</button>
+              <img [src]="album.items[previewPhotoIndex].imageUrl" [alt]="album.items[previewPhotoIndex].title">
+              <button class="lightbox-arrow lightbox-next" type="button" (click)="movePreviewPhoto(1)" [disabled]="previewPhotoIndex === album.items.length - 1" aria-label="Photo suivante">›</button>
+            </div>
+            <aside class="photo-lightbox-copy">
+              <p class="eyebrow">{{ album.title }}</p>
+              <h2>{{ album.title }}</h2>
+              @if (album.description) { <p class="lightbox-caption">{{ album.description }}</p> }
+              <small>{{ previewPhotoIndex + 1 }} / {{ album.items.length }}</small>
+            </aside>
+          </section>
+        </div>
+      }
     </div>
   `
 })
-export class AdminComponent implements OnInit {
+export class AdminComponent implements OnInit, OnDestroy {
   private readonly admin = inject(AdminService);
   private readonly router = inject(Router);
+  private previousBodyOverflow = '';
   items: AdminGalleryItem[] = [];
   galleryGroups: AdminGalleryGroup[] = [];
   groupCoverSelections: Record<string, string> = {};
@@ -104,6 +135,10 @@ export class AdminComponent implements OnInit {
   pendingFiles: File[] = [];
   pendingGroupId: string | null = null;
   pendingGroupTitle = '';
+  externalImageUrl = '';
+  externalImageTitle = '';
+  externalImageGroupId: string | null = '__new__';
+  private suggestedExternalImageTitle = '';
   editingGroupId: string | null = null;
   groupTitleDraft = '';
   groupDescriptionDraft = '';
@@ -114,6 +149,8 @@ export class AdminComponent implements OnInit {
   groupsLoadError = '';
   busy = false;
   ordering = false;
+  previewAlbum: { groupId: string; title: string; description: string; items: AdminGalleryItem[] } | null = null;
+  previewPhotoIndex = 0;
   isDraggingFile = false;
   errorMessage = '';
   successMessage = '';
@@ -129,7 +166,8 @@ export class AdminComponent implements OnInit {
   get previewGroups(): { id: string; title: string; description: string; items: AdminGalleryItem[]; sortOrder: number; coverItemId: string | null }[] {
     const groups = new Map<string, { id: string; title: string; description: string; items: AdminGalleryItem[]; sortOrder: number; coverItemId: string | null }>();
     for (const item of this.items.filter(current => current.published)) {
-      const id = item.groupId ?? 'ungrouped';
+      const id = item.groupId;
+      if (!id) continue;
       let group = groups.get(id);
       if (!group) {
         group = { id, title: item.groupTitle ?? '', description: item.groupDescription ?? '', items: [], sortOrder: item.groupSortOrder, coverItemId: item.groupCoverItemId };
@@ -137,12 +175,17 @@ export class AdminComponent implements OnInit {
       }
       group.items.push(item);
     }
-    return [...groups.values()].sort((a, b) => a.id === 'ungrouped' ? 1 : b.id === 'ungrouped' ? -1 : a.sortOrder - b.sortOrder)
-      .map(group => ({ ...group, items: group.id === 'ungrouped' ? group.items : [group.items.find(item => item.id === group.coverItemId) ?? group.items[0]] }));
+    return [...groups.values()].sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
-  get previewCards(): { id: string; title: string; description: string; item: AdminGalleryItem }[] {
-    return this.previewGroups.map(group => ({ id: group.id, title: group.title, description: group.description, item: group.items[0] }));
+  get previewCards(): { id: string; title: string; description: string; items: AdminGalleryItem[]; item: AdminGalleryItem }[] {
+    return this.previewGroups.map(group => ({
+      id: group.id,
+      title: group.title,
+      description: group.description,
+      items: group.items,
+      item: group.items.find(item => item.id === group.coverItemId) ?? group.items[0]
+    }));
   }
 
   ngOnInit(): void { this.loadItems(); this.loadGroups(); }
@@ -151,6 +194,74 @@ export class AdminComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     this.addFiles(Array.from(input.files ?? []));
     input.value = '';
+  }
+
+  suggestExternalImageTitle(value: string): void {
+    try {
+      const filename = new URL(value.trim()).pathname.split('/').pop() ?? '';
+      const title = this.titleFromFile(decodeURIComponent(filename));
+      if (title && (!this.externalImageTitle || this.externalImageTitle === this.suggestedExternalImageTitle)) {
+        this.externalImageTitle = title;
+        this.suggestedExternalImageTitle = title;
+      }
+    } catch {
+      return;
+    }
+  }
+
+  addExternalGalleryImage(): void {
+    if (this.busy) return;
+    this.clearMessages();
+    if (!this.isValidExternalImageUrl(this.externalImageUrl)) {
+      this.errorMessage = 'Saisissez une URL d’image HTTPS valide.';
+      return;
+    }
+    if (!this.externalImageTitle.trim()) {
+      this.errorMessage = 'Saisissez un titre pour la photo.';
+      return;
+    }
+    if (!this.externalImageGroupId) {
+      this.errorMessage = 'Choisissez un groupe ou créez-en un pour cette photo.';
+      return;
+    }
+    if (this.externalImageGroupId === '__new__') {
+      const title = this.externalImageTitle.trim();
+      this.busy = true;
+      this.admin.createGalleryGroup(title).pipe(timeout(20_000)).subscribe({
+        next: group => {
+          this.galleryGroups = [...this.galleryGroups, group].sort((a, b) => a.sortOrder - b.sortOrder);
+          this.saveExternalGalleryImage(group.id);
+        },
+        error: error => {
+          this.busy = false;
+          this.errorMessage = this.getSaveErrorMessage(error);
+        }
+      });
+      return;
+    }
+    this.saveExternalGalleryImage(this.externalImageGroupId);
+  }
+
+  private saveExternalGalleryImage(groupId: string): void {
+    this.busy = true;
+    const value = {
+      ...this.emptyForm(),
+      title: this.externalImageTitle.trim(),
+      groupId,
+      imageUrl: this.externalImageUrl.trim()
+    };
+    this.admin.createGalleryItem(value).pipe(finalize(() => this.busy = false)).subscribe({
+      next: created => {
+        this.items = [...this.items, created];
+        this.externalImageTitle = '';
+        this.suggestedExternalImageTitle = '';
+        this.externalImageUrl = '';
+        this.externalImageGroupId = created.groupId;
+        this.successMessage = `La photo « ${created.title} » a été ajoutée à la galerie.`;
+        this.loadGroups();
+      },
+      error: error => this.errorMessage = this.getSaveErrorMessage(error)
+    });
   }
 
   onFileDragOver(event: DragEvent): void { event.preventDefault(); this.isDraggingFile = true; }
@@ -239,14 +350,26 @@ export class AdminComponent implements OnInit {
   coverOptions(groupId: string): AdminGalleryItem[] { return this.items.filter(item => item.groupId === groupId && item.published); }
 
   editGroup(group: AdminGalleryGroup): void {
-    this.editingGroupId = this.editingGroupId === group.id ? null : group.id;
-    this.filterGroupId = this.editingGroupId ?? '__all__';
+    if (this.editingGroupId === group.id) {
+      this.editingGroupId = null;
+      this.filterGroupId = '__all__';
+      return;
+    }
+    this.openGroupEditor(group);
+  }
+
+  editPreviewGroup(groupId: string): void {
+    const group = this.galleryGroups.find(current => current.id === groupId);
+    if (group) this.openGroupEditor(group);
+  }
+
+  private openGroupEditor(group: AdminGalleryGroup): void {
+    this.editingGroupId = group.id;
+    this.filterGroupId = group.id;
     this.groupTitleDraft = group.title;
     this.groupDescriptionDraft = group.description ?? '';
-    if (this.editingGroupId) {
-      const editorId = `group-editor-${group.id}`;
-      setTimeout(() => document.getElementById(editorId)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
-    }
+    const editorId = `group-editor-${group.id}`;
+    setTimeout(() => document.getElementById(editorId)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
   }
 
   saveGroup(group: AdminGalleryGroup): void {
@@ -299,6 +422,38 @@ export class AdminComponent implements OnInit {
   }
   endThumbnailDrag(): void { this.draggedIndex = null; this.dropTargetIndex = null; }
 
+  openPreviewGroup(groupId: string): void {
+    const group = this.previewGroups.find(current => current.id === groupId);
+    if (!group || !group.items.length) return;
+    this.previewAlbum = { groupId: group.id, title: group.title, description: group.description, items: group.items };
+    const coverIndex = group.items.findIndex(item => item.id === group.coverItemId);
+    this.previewPhotoIndex = coverIndex >= 0 ? coverIndex : 0;
+    this.previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  movePreviewPhoto(direction: number): void {
+    if (!this.previewAlbum) return;
+    const nextIndex = this.previewPhotoIndex + direction;
+    if (nextIndex < 0 || nextIndex >= this.previewAlbum.items.length) return;
+    this.previewPhotoIndex = nextIndex;
+  }
+  closePreviewGroup(): void {
+    this.previewAlbum = null;
+    document.body.style.overflow = this.previousBodyOverflow;
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onPreviewKeydown(event: KeyboardEvent): void {
+    if (!this.previewAlbum) return;
+    if (event.key === 'Escape') { this.closePreviewGroup(); event.preventDefault(); }
+    else if (event.key === 'ArrowLeft') { this.movePreviewPhoto(-1); event.preventDefault(); }
+    else if (event.key === 'ArrowRight') { this.movePreviewPhoto(1); event.preventDefault(); }
+  }
+
+  ngOnDestroy(): void {
+    if (this.previewAlbum) document.body.style.overflow = this.previousBodyOverflow;
+  }
+
   deleteItem(item: AdminGalleryItem): void {
     if (!window.confirm(`Supprimer « ${item.title} » ? Cette action est définitive.`)) return;
     this.clearMessages();
@@ -309,15 +464,16 @@ export class AdminComponent implements OnInit {
   }
 
   deleteGroup(group: AdminGalleryGroup): void {
-    if (!window.confirm(`Supprimer le groupe « ${group.title} » ? Les photos resteront dans la galerie sans groupe.`) || this.busy) return;
+    if (!window.confirm(`Supprimer le groupe « ${group.title} » et toutes ses photos ? Cette action est définitive.`) || this.busy) return;
     this.busy = true;
     this.admin.deleteGalleryGroup(group.id).pipe(finalize(() => this.busy = false)).subscribe({
       next: () => {
+        if (this.previewAlbum?.groupId === group.id) this.closePreviewGroup();
         this.galleryGroups = this.galleryGroups.filter(current => current.id !== group.id);
-        this.items = this.items.map(item => item.groupId === group.id ? { ...item, groupId: null, groupTitle: null, groupDescription: null, groupSortOrder: 0, groupCoverItemId: null } : item);
+        this.items = this.items.filter(item => item.groupId !== group.id);
         if (this.editingGroupId === group.id) { this.editingGroupId = null; this.filterGroupId = '__all__'; }
         if (this.filterGroupId === group.id) this.filterGroupId = '__all__';
-        this.successMessage = 'Le groupe a été supprimé. Les photos ont été conservées.';
+        this.successMessage = 'Le groupe et ses photos ont été supprimés.';
         delete this.groupCoverSelections[group.id];
         this.loadItems();
       },
@@ -354,10 +510,14 @@ export class AdminComponent implements OnInit {
     this.ordering = true;
     this.clearMessages();
     let orderedItems = reordered;
-    let request;
+    let request: Observable<void>;
+    let groupIdToUpdate: string | null = null;
+    let firstPublishedItem: AdminGalleryItem | undefined;
     if (this.filterGroupId !== '__all__' && this.filterGroupId !== '__ungrouped__') {
-      request = this.admin.reorderGalleryGroupItems(this.filterGroupId, reordered.map(item => item.id));
-      orderedItems = [...this.items.filter(item => item.groupId !== this.filterGroupId), ...reordered];
+      groupIdToUpdate = this.filterGroupId;
+      firstPublishedItem = reordered.find(item => item.published);
+      request = this.admin.reorderGalleryGroupItems(groupIdToUpdate, reordered.map(item => item.id));
+      orderedItems = [...this.items.filter(item => item.groupId !== groupIdToUpdate), ...reordered];
     } else {
       if (this.filterGroupId === '__ungrouped__') {
         const iterator = [...reordered];
@@ -365,9 +525,38 @@ export class AdminComponent implements OnInit {
       }
       request = this.admin.reorderGallery(orderedItems.map(item => item.id));
     }
-    request.pipe(finalize(() => this.ordering = false)).subscribe({
-      next: () => { this.items = orderedItems; this.successMessage = 'Ordre des photos enregistré.'; },
-      error: error => this.errorMessage = error.status === 401 || error.status === 403 ? 'Votre session a expiré. Reconnectez-vous.' : 'Impossible d’enregistrer le nouvel ordre. Réessayez.'
+    let orderSaved = false;
+    request.pipe(
+      switchMap(() => {
+        this.items = orderedItems;
+        orderSaved = true;
+        const currentCoverId = this.galleryGroups.find(group => group.id === groupIdToUpdate)?.coverItemId;
+        return groupIdToUpdate && firstPublishedItem && currentCoverId !== firstPublishedItem.id
+          ? this.admin.setGalleryGroupCover(groupIdToUpdate, firstPublishedItem.id)
+          : of(null);
+      }),
+      finalize(() => this.ordering = false)
+    ).subscribe({
+      next: updatedGroup => {
+        if (updatedGroup) {
+          this.galleryGroups = this.galleryGroups.map(group => group.id === updatedGroup.id ? updatedGroup : group);
+          this.items = this.items.map(item => item.groupId === updatedGroup.id
+            ? { ...item, groupCoverItemId: updatedGroup.coverItemId }
+            : item);
+          this.groupCoverSelections[updatedGroup.id] = updatedGroup.coverItemId ?? '';
+        }
+        this.successMessage = groupIdToUpdate && firstPublishedItem
+          ? 'Ordre enregistré et première photo publiée mise en couverture.'
+          : 'Ordre des photos enregistré.';
+      },
+      error: error => {
+        const message = error.status === 401 || error.status === 403
+          ? 'Votre session a expiré. Reconnectez-vous.'
+          : this.getSaveErrorMessage(error);
+        this.errorMessage = orderSaved
+          ? `Ordre enregistré, mais la couverture n’a pas pu être mise à jour. ${message}`
+          : `Impossible d’enregistrer le nouvel ordre. ${message}`;
+      }
     });
   }
   private loadItems(): void {
@@ -385,7 +574,7 @@ export class AdminComponent implements OnInit {
     this.groupsLoading = true;
     this.groupsLoadError = '';
     this.admin.getGalleryGroups().subscribe({
-      next: groups => { this.galleryGroups = groups; this.groupsLoading = false; this.syncGroupCoverSelections(); },
+      next: groups => { this.galleryGroups = [...groups].sort((a, b) => a.sortOrder - b.sortOrder); this.groupsLoading = false; this.syncGroupCoverSelections(); },
       error: error => {
         this.groupsLoading = false;
         if (this.redirectForExpiredSession(error)) return;
@@ -404,7 +593,15 @@ export class AdminComponent implements OnInit {
       this.groupCoverSelections[group.id] = cover;
     }
   }
-  private emptyForm(): GalleryFormValue { return { title: '', caption: '', category: 'BALAYAGE', instagramUrl: '', published: true, groupId: null }; }
+  private emptyForm(): GalleryFormValue { return { title: '', caption: '', category: 'BALAYAGE', imageUrl: '', instagramUrl: '', published: true, groupId: null }; }
+  private isValidExternalImageUrl(value: string): boolean {
+    try {
+      const url = new URL(value.trim());
+      return url.protocol === 'https:' && url.hostname.length > 0;
+    } catch {
+      return false;
+    }
+  }
   private titleFromFile(name: string): string { return name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Nouvelle réalisation'; }
   private suggestGroupTitle(files: File[]): string {
     const roots = files.map(file => this.groupRoot(file.name)).filter(Boolean);

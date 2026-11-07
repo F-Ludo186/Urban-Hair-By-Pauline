@@ -1,6 +1,9 @@
 package fr.urbanhair.product;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -95,5 +98,26 @@ class ProductControllerTest {
                         .with(user("admin").roles("ADMIN"))
                         .with(csrf()))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminCanCreateProductWithHttpsImageUrlWithoutUploadingAFile() throws Exception {
+        mockMvc.perform(multipart("/api/admin/products")
+                        .param("name", "Sérum externe")
+                        .param("category", "Soin")
+                        .param("price", "25.00")
+                        .param("imageUrl", "https://cdn.example.com/serum.jpg")
+                        .with(user("admin").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.imageUrl").value("https://cdn.example.com/serum.jpg"));
+
+        assertThat(jdbc.queryForObject(
+                "SELECT image_key FROM products WHERE name = ?", String.class, "Sérum externe"))
+                .isNull();
+        assertThat(jdbc.queryForObject(
+                "SELECT image_url FROM products WHERE name = ?", String.class, "Sérum externe"))
+                .isEqualTo("https://cdn.example.com/serum.jpg");
+        verify(images, never()).store(any());
     }
 }

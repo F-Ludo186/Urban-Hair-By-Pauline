@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS gallery_items (
     title VARCHAR(120) NOT NULL,
     caption VARCHAR(2000) NOT NULL,
     category VARCHAR(40) NOT NULL,
-    image_key VARCHAR(80) NOT NULL,
+    image_key VARCHAR(80),
     instagram_url VARCHAR(500),
     published BOOLEAN NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS gallery_items (
 
 ALTER TABLE gallery_items ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE gallery_items ADD COLUMN IF NOT EXISTS group_id VARCHAR(36);
+ALTER TABLE gallery_items ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
+ALTER TABLE gallery_items ALTER COLUMN image_key DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS gallery_groups (
     id VARCHAR(36) PRIMARY KEY,

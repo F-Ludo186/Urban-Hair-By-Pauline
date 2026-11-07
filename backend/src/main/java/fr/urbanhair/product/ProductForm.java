@@ -44,6 +44,8 @@ public class ProductForm {
 
     private boolean published;
     private boolean featured;
+    @Size(max = 1000)
+    private String imageUrl = "";
     private MultipartFile image;
 
     public String getName() { return name; }
@@ -68,6 +70,8 @@ public class ProductForm {
     public void setPublished(boolean published) { this.published = published; }
     public boolean isFeatured() { return featured; }
     public void setFeatured(boolean featured) { this.featured = featured; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl == null ? "" : imageUrl.trim(); }
     public MultipartFile getImage() { return image; }
     public void setImage(MultipartFile image) { this.image = image; }
 }

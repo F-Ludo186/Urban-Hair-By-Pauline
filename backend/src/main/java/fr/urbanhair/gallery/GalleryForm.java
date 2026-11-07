@@ -24,6 +24,8 @@ public class GalleryForm {
 
     private boolean published;
     private String groupId = "";
+    @Size(max = 1000)
+    private String imageUrl = "";
     private MultipartFile image;
 
     public String getTitle() { return title; }
@@ -38,6 +40,8 @@ public class GalleryForm {
     public void setPublished(boolean published) { this.published = published; }
     public String getGroupId() { return groupId; }
     public void setGroupId(String groupId) { this.groupId = groupId == null ? "" : groupId.trim(); }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl == null ? "" : imageUrl.trim(); }
     public MultipartFile getImage() { return image; }
     public void setImage(MultipartFile image) { this.image = image; }
 }

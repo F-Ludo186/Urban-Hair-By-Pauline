@@ -2,6 +2,7 @@ package fr.urbanhair.gallery;
 
 import fr.urbanhair.storage.ImageNotFoundException;
 import fr.urbanhair.storage.ImageUploadService;
+import fr.urbanhair.storage.ExternalImageUrl;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.HashSet;
@@ -98,7 +99,9 @@ public class GalleryController {
     @DeleteMapping("/api/admin/gallery/groups/{id}")
     public ResponseEntity<Void> deleteGroup(@PathVariable("id") String id) {
         findGroup(id);
+        List<GalleryRecord> items = repository.findByGroupId(id);
         repository.deleteGroup(id);
+        items.stream().map(GalleryRecord::imageKey).filter(key -> key != null).forEach(images::delete);
         return ResponseEntity.noContent().build();
     }
 
@@ -127,18 +130,18 @@ public class GalleryController {
 
     @PostMapping(value = "/api/admin/gallery", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<GalleryItem> create(@Valid @ModelAttribute GalleryForm form, BindingResult validation) {
-        validate(validation);
+        String imageUrl = validate(form, validation, true);
         String groupId = emptyToNull(form.getGroupId());
         GalleryGroup group = findOptionalGroup(groupId);
-        String key = storeImage(form);
+        String key = hasImageFile(form) ? storeImage(form) : null;
         GalleryRecord item = new GalleryRecord(
                 UUID.randomUUID().toString(), form.getTitle(), form.getCaption(), form.getCategory(),
-                key, emptyToNull(form.getInstagramUrl()), form.isPublished(), 0, groupId, group == null ? null : group.title(),
+                key, imageUrl, emptyToNull(form.getInstagramUrl()), form.isPublished(), 0, groupId, group == null ? null : group.title(),
                 group == null ? null : group.description(), group == null ? 0 : group.sortOrder(), group == null ? null : group.coverItemId());
         try {
             repository.insert(item);
         } catch (RuntimeException exception) {
-            images.delete(key);
+            if (key != null) images.delete(key);
             throw exception;
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(toItem(findById(item.id())));
@@ -149,18 +152,23 @@ public class GalleryController {
             @PathVariable("id") String id,
             @Valid @ModelAttribute GalleryForm form,
             BindingResult validation) {
-        validate(validation);
+        String requestedImageUrl = validate(form, validation, false);
         GalleryRecord current = findById(id);
         String groupId = emptyToNull(form.getGroupId());
         GalleryGroup group = findOptionalGroup(groupId);
         String key = current.imageKey();
-        boolean replacedImage = form.getImage() != null && !form.getImage().isEmpty();
+        boolean replacedImage = hasImageFile(form);
+        boolean replacedWithUrl = requestedImageUrl != null;
+        if (replacedImage && replacedWithUrl) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choisissez un fichier ou une URL pour la photo, pas les deux.");
+        }
         if (replacedImage) {
             key = storeImage(form);
-        }
+        } else if (replacedWithUrl) key = null;
+        String imageUrl = replacedImage ? null : replacedWithUrl ? requestedImageUrl : current.imageUrl();
         GalleryRecord updated = new GalleryRecord(
                 current.id(), form.getTitle(), form.getCaption(), form.getCategory(),
-                key, emptyToNull(form.getInstagramUrl()), form.isPublished(), current.sortOrder(), groupId, group == null ? null : group.title(),
+                key, imageUrl, emptyToNull(form.getInstagramUrl()), form.isPublished(), current.sortOrder(), groupId, group == null ? null : group.title(),
                 group == null ? null : group.description(), group == null ? 0 : group.sortOrder(), group == null ? null : group.coverItemId());
         try {
             repository.update(updated);
@@ -170,7 +178,7 @@ public class GalleryController {
             }
             throw exception;
         }
-        if (replacedImage) {
+        if ((replacedImage || replacedWithUrl) && current.imageKey() != null) {
             images.delete(current.imageKey());
         }
         return toItem(findById(id));
@@ -180,7 +188,7 @@ public class GalleryController {
     public ResponseEntity<Void> delete(@PathVariable("id") String id) {
         GalleryRecord item = findById(id);
         repository.delete(id);
-        images.delete(item.imageKey());
+        if (item.imageKey() != null) images.delete(item.imageKey());
         return ResponseEntity.noContent().build();
     }
 
@@ -194,7 +202,7 @@ public class GalleryController {
         return ResponseEntity.noContent().build();
     }
 
-    private void validate(BindingResult result) {
+    private String validate(GalleryForm form, BindingResult result, boolean creating) {
         if (result.hasErrors()) {
             String message = result.getFieldErrors().stream()
                     .map(error -> error.getField() + " : " + error.getDefaultMessage())
@@ -202,6 +210,20 @@ public class GalleryController {
                     .orElse("Les informations saisies sont invalides.");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
         }
+        String imageUrl;
+        try {
+            imageUrl = ExternalImageUrl.normalize(form.getImageUrl());
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        }
+        boolean hasImageFile = hasImageFile(form);
+        if (hasImageFile && imageUrl != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choisissez un fichier ou une URL pour la photo, pas les deux.");
+        }
+        if (creating && !hasImageFile && imageUrl == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ajoutez une photo ou saisissez son URL HTTPS.");
+        }
+        return imageUrl;
     }
 
     private GalleryRecord findById(String id) {
@@ -221,9 +243,12 @@ public class GalleryController {
     }
 
     private GalleryItem toItem(GalleryRecord record) {
+        String imageUrl = record.imageKey() == null
+                ? record.imageUrl()
+                : "/api/gallery/images/" + record.imageKey();
         return new GalleryItem(
                 record.id(), record.title(), record.caption(), record.category(),
-                "/api/gallery/images/" + record.imageKey(), record.instagramUrl(), record.published(), record.groupId(), record.groupTitle(),
+                imageUrl, record.instagramUrl(), record.published(), record.groupId(), record.groupTitle(),
                 record.groupDescription(), record.groupSortOrder(), record.groupCoverItemId());
     }
 
@@ -238,4 +263,6 @@ public class GalleryController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }
     }
+
+    private boolean hasImageFile(GalleryForm form) { return form.getImage() != null && !form.getImage().isEmpty(); }
 }

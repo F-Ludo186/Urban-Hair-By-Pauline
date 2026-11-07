@@ -13,7 +13,8 @@ public class GalleryRepository {
     private static final String ITEM_SELECT = "SELECT i.*, g.title AS group_title, g.description AS group_description, g.sort_order AS group_sort_order, g.cover_item_id AS group_cover_item_id FROM gallery_items i LEFT JOIN gallery_groups g ON i.group_id = g.id";
     private static final RowMapper<GalleryRecord> ITEM_MAPPER = (result, row) -> new GalleryRecord(
             result.getString("id"), result.getString("title"), result.getString("caption"),
-            result.getString("category"), result.getString("image_key"), result.getString("instagram_url"),
+            result.getString("category"), result.getString("image_key"), result.getString("image_url"),
+            result.getString("instagram_url"),
             result.getBoolean("published"), result.getInt("sort_order"), result.getString("group_id"),
             result.getString("group_title"), result.getString("group_description"), result.getInt("group_sort_order"),
             result.getString("group_cover_item_id"));
@@ -31,7 +32,11 @@ public class GalleryRepository {
     }
 
     public List<GalleryRecord> findPublished() {
-        return jdbc.query(ITEM_SELECT + " WHERE i.published = TRUE ORDER BY CASE WHEN g.id IS NULL THEN 1 ELSE 0 END, g.sort_order, i.sort_order, i.created_at DESC, i.id", ITEM_MAPPER);
+        return jdbc.query(ITEM_SELECT + " WHERE i.published = TRUE AND i.group_id IS NOT NULL ORDER BY g.sort_order, i.sort_order, i.created_at DESC, i.id", ITEM_MAPPER);
+    }
+
+    public List<GalleryRecord> findByGroupId(String groupId) {
+        return jdbc.query(ITEM_SELECT + " WHERE i.group_id = ? ORDER BY i.sort_order, i.created_at, i.id", ITEM_MAPPER, groupId);
     }
 
     public Optional<GalleryRecord> findById(String id) {
@@ -40,8 +45,8 @@ public class GalleryRepository {
 
     @Transactional
     public void insert(GalleryRecord item) {
-        jdbc.update("INSERT INTO gallery_items (id, title, caption, category, image_key, instagram_url, published, sort_order, group_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                item.id(), item.title(), item.caption(), item.category(), item.imageKey(), item.instagramUrl(),
+        jdbc.update("INSERT INTO gallery_items (id, title, caption, category, image_key, image_url, instagram_url, published, sort_order, group_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                item.id(), item.title(), item.caption(), item.category(), item.imageKey(), item.imageUrl(), item.instagramUrl(),
                 item.published(), nextItemSortOrder(item.groupId()), item.groupId());
         ensureGroupCover(item.groupId());
     }
@@ -50,8 +55,8 @@ public class GalleryRepository {
     public void update(GalleryRecord item) {
         String previousGroupId = nullableString("SELECT group_id FROM gallery_items WHERE id = ?", item.id());
         Boolean previousPublished = jdbc.queryForObject("SELECT published FROM gallery_items WHERE id = ?", Boolean.class, item.id());
-        jdbc.update("UPDATE gallery_items SET title = ?, caption = ?, category = ?, image_key = ?, instagram_url = ?, published = ?, group_id = ? WHERE id = ?",
-                item.title(), item.caption(), item.category(), item.imageKey(), item.instagramUrl(), item.published(), item.groupId(), item.id());
+        jdbc.update("UPDATE gallery_items SET title = ?, caption = ?, category = ?, image_key = ?, image_url = ?, instagram_url = ?, published = ?, group_id = ? WHERE id = ?",
+                item.title(), item.caption(), item.category(), item.imageKey(), item.imageUrl(), item.instagramUrl(), item.published(), item.groupId(), item.id());
         if (!java.util.Objects.equals(previousGroupId, item.groupId()) || !java.util.Objects.equals(previousPublished, item.published())) {
             ensureGroupCover(previousGroupId);
             ensureGroupCover(item.groupId());
@@ -125,7 +130,7 @@ public class GalleryRepository {
 
     @Transactional
     public void deleteGroup(String id) {
-        jdbc.update("UPDATE gallery_items SET group_id = NULL WHERE group_id = ?", id);
+        jdbc.update("DELETE FROM gallery_items WHERE group_id = ?", id);
         jdbc.update("DELETE FROM gallery_groups WHERE id = ?", id);
     }
 

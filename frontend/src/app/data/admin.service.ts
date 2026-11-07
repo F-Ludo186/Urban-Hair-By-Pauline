@@ -25,6 +25,7 @@ export interface GalleryFormValue {
   title: string;
   caption: string;
   category: string;
+  imageUrl: string;
   instagramUrl: string;
   published: boolean;
   groupId: string | null;
@@ -34,6 +35,7 @@ export interface ProductFormValue {
   name: string;
   category: string;
   description: string;
+  imageUrl: string;
   price: number;
   promotionPrice: number | null;
   sku: string;
@@ -121,7 +123,7 @@ export class AdminService {
     return this.http.put<AdminShopSettings>('/api/admin/shop-settings', settings);
   }
 
-  createProduct(value: ProductFormValue, image: File): Observable<Product> {
+  createProduct(value: ProductFormValue, image?: File): Observable<Product> {
     return this.http.post<Product>('/api/admin/products', this.toProductFormData(value, image));
   }
 
@@ -156,7 +158,7 @@ export class AdminService {
     return this.http.put<void>(`/api/admin/gallery/groups/${encodeURIComponent(id)}/items`, { ids });
   }
 
-  createGalleryItem(value: GalleryFormValue, image: File): Observable<AdminGalleryItem> {
+  createGalleryItem(value: GalleryFormValue, image?: File): Observable<AdminGalleryItem> {
     return this.http.post<AdminGalleryItem>('/api/admin/gallery', this.toFormData(value, image));
   }
 
@@ -192,6 +194,7 @@ export class AdminService {
     formData.append('title', value.title);
     formData.append('caption', value.caption);
     formData.append('category', value.category);
+    formData.append('imageUrl', value.imageUrl);
     formData.append('instagramUrl', value.instagramUrl);
     formData.append('published', String(value.published));
     formData.append('groupId', value.groupId ?? '');
@@ -206,6 +209,7 @@ export class AdminService {
     formData.append('name', value.name);
     formData.append('category', value.category);
     formData.append('description', value.description);
+    formData.append('imageUrl', value.imageUrl);
     formData.append('price', String(value.price));
     formData.append('promotionPrice', value.promotionPrice == null ? '' : String(value.promotionPrice));
     formData.append('sku', value.sku);
