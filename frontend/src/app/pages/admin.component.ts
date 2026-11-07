@@ -48,11 +48,13 @@ import { AdminGalleryGroup, AdminGalleryItem, AdminService, GalleryFormValue } f
 
           @if (galleryGroups.length) {
             <div class="gallery-group-list">
-              <h4>Groupes · ordre d’affichage</h4>
-              @for (group of galleryGroups; track group.id; let i = $index) {
+              @if (selectedGalleryGroup; as group) {
                 <div class="gallery-group-row">
-                  <div class="group-row-heading"><span><strong>{{ group.title }}</strong><small>{{ group.itemCount }} photo{{ group.itemCount > 1 ? 's' : '' }}</small></span><button type="button" (click)="moveGroup(i, -1)" [disabled]="i === 0 || ordering" [attr.aria-label]="'Monter le groupe ' + group.title">↑</button><button type="button" (click)="moveGroup(i, 1)" [disabled]="i === galleryGroups.length - 1 || ordering" [attr.aria-label]="'Descendre le groupe ' + group.title">↓</button><button type="button" (click)="editGroup(group)" [disabled]="busy" [attr.aria-expanded]="editingGroupId === group.id" [attr.aria-controls]="'group-editor-' + group.id">{{ editingGroupId === group.id ? 'Fermer' : 'Modifier' }}</button><button type="button" class="delete-thumb" (click)="deleteGroup(group)" [disabled]="busy" [attr.aria-label]="'Supprimer le groupe ' + group.title">×</button></div>
-                  @if (editingGroupId === group.id) {
+                  <div class="gallery-group-list-heading">
+                    <h4>Modification du groupe</h4>
+                    <button type="button" class="gallery-groups-back" (click)="closeGroupEditor()" [disabled]="busy">Fermer</button>
+                  </div>
+                  <div class="group-row-heading"><span><strong>{{ group.title }}</strong><small>{{ group.itemCount }} photo{{ group.itemCount > 1 ? 's' : '' }}</small></span></div>
                     <div class="group-editor" [id]="'group-editor-' + group.id">
                     <label class="admin-field">Titre du groupe<input [name]="'group-title-' + group.id" [(ngModel)]="groupTitleDraft" maxlength="120" required></label>
                     <label class="admin-field">Texte du groupe<textarea [name]="'group-description-' + group.id" [(ngModel)]="groupDescriptionDraft" maxlength="2000" rows="3" placeholder="Présentez cette série de photos"></textarea></label>
@@ -68,8 +70,9 @@ import { AdminGalleryGroup, AdminGalleryItem, AdminService, GalleryFormValue } f
                       </ol>
                     </div>
                     </div>
-                  }
                 </div>
+              } @else {
+                <p class="gallery-group-selection-hint">Choisissez « Modifier » sous un groupe dans l’aperçu pour afficher ses informations ici.</p>
               }
             </div>
           }
@@ -92,7 +95,12 @@ import { AdminGalleryGroup, AdminGalleryItem, AdminService, GalleryFormValue } f
                       <figure role="button" tabindex="0" (click)="openPreviewGroup(card.id)" (keydown.enter)="openPreviewGroup(card.id)" (keydown.space)="openPreviewGroup(card.id); $event.preventDefault()" [attr.aria-label]="card.title + ', ' + card.items.length + ' photos'">
                         <img [src]="card.item.imageUrl" [alt]="card.title"><figcaption><strong>{{ card.title }}</strong><small>{{ card.items.length }} {{ card.items.length > 1 ? 'photos' : 'photo' }}</small></figcaption>
                       </figure>
-                      <button class="preview-group-edit" type="button" (click)="editPreviewGroup(card.id)" [disabled]="busy" [attr.aria-label]="'Modifier le groupe ' + card.title">Modifier</button>
+                      <div class="shop-admin-product-actions">
+                        <button type="button" (click)="moveGroup(groupIndex(card.id), -1)" [disabled]="ordering || groupIndex(card.id) <= 0" [attr.aria-label]="'Monter le groupe ' + card.title">↑</button>
+                        <button type="button" (click)="moveGroup(groupIndex(card.id), 1)" [disabled]="ordering || groupIndex(card.id) < 0 || groupIndex(card.id) === galleryGroups.length - 1" [attr.aria-label]="'Descendre le groupe ' + card.title">↓</button>
+                        <button type="button" (click)="editPreviewGroup(card.id)" [disabled]="busy" [attr.aria-expanded]="editingGroupId === card.id" [attr.aria-label]="'Modifier le groupe ' + card.title">Modifier</button>
+                        <button type="button" class="admin-delete" (click)="deletePreviewGroup(card.id)" [disabled]="busy" [attr.aria-label]="'Supprimer le groupe ' + card.title">Supprimer</button>
+                      </div>
                     </div>
                   }
                 </section>
@@ -161,6 +169,10 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (this.filterGroupId === '__all__') return this.items;
     if (this.filterGroupId === '__ungrouped__') return this.items.filter(item => !item.groupId);
     return this.items.filter(item => item.groupId === this.filterGroupId);
+  }
+
+  get selectedGalleryGroup(): AdminGalleryGroup | null {
+    return this.galleryGroups.find(group => group.id === this.editingGroupId) ?? null;
   }
 
   get previewGroups(): { id: string; title: string; description: string; items: AdminGalleryItem[]; sortOrder: number; coverItemId: string | null }[] {
@@ -348,19 +360,21 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   groupItems(groupId: string): AdminGalleryItem[] { return this.items.filter(item => item.groupId === groupId); }
   coverOptions(groupId: string): AdminGalleryItem[] { return this.items.filter(item => item.groupId === groupId && item.published); }
-
-  editGroup(group: AdminGalleryGroup): void {
-    if (this.editingGroupId === group.id) {
-      this.editingGroupId = null;
-      this.filterGroupId = '__all__';
-      return;
-    }
-    this.openGroupEditor(group);
-  }
+  groupIndex(groupId: string): number { return this.galleryGroups.findIndex(group => group.id === groupId); }
 
   editPreviewGroup(groupId: string): void {
     const group = this.galleryGroups.find(current => current.id === groupId);
     if (group) this.openGroupEditor(group);
+  }
+
+  deletePreviewGroup(groupId: string): void {
+    const group = this.galleryGroups.find(current => current.id === groupId);
+    if (group) this.deleteGroup(group);
+  }
+
+  closeGroupEditor(): void {
+    this.editingGroupId = null;
+    this.filterGroupId = '__all__';
   }
 
   private openGroupEditor(group: AdminGalleryGroup): void {

@@ -42,8 +42,11 @@ type LayoutOption = { value: string; label: string };
               </div>
 
               @for (section of sections; track section.id) {
-                <section class="admin-editor home-section-editor">
-                  <div class="admin-editor-heading"><div><p class="eyebrow">SECTION {{ section.sortOrder + 1 }}</p><h2>{{ sectionName(section.id) }}</h2></div></div>
+                <details class="admin-editor home-section-editor" open>
+                  <summary class="home-section-summary">
+                    <span class="home-section-heading"><span class="eyebrow">SECTION {{ section.sortOrder + 1 }}</span><strong>{{ sectionName(section.id) }}</strong></span>
+                    <span class="home-section-chevron" aria-hidden="true">⌄</span>
+                  </summary>
                   <form (ngSubmit)="saveSection(section)" #sectionForm="ngForm">
                     @if (section.id !== 'quote') {
                       <label class="admin-field">Petit titre<input [name]="'eyebrow-' + section.id" [(ngModel)]="section.eyebrow" maxlength="120"></label>
@@ -77,7 +80,7 @@ type LayoutOption = { value: string; label: string };
                     @if (imageErrors[section.id]) { <p class="admin-error" role="alert">{{ imageErrors[section.id] }}</p> }
                     <div class="admin-form-actions"><button class="button button-dark" type="submit" [disabled]="savingId === section.id || !sectionForm.valid">{{ savingId === section.id ? 'Enregistrement…' : 'Enregistrer la section' }}</button></div>
                   </form>
-                </section>
+                </details>
               }
             }
           </aside>
