@@ -1,6 +1,6 @@
 import { AsyncPipe, CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -58,7 +58,7 @@ interface CartLine extends CartItem {
         <section class="product-grid section-wrap" [class.product-grid-small]="displayMode === 'small'" [class.product-grid-list]="displayMode === 'list'" aria-label="Produits de la boutique">
           @for (product of visibleProducts; track product.id) {
             <article class="product-card">
-              <div class="product-photo">
+              <div class="product-photo" role="button" tabindex="0" (click)="openProductDetails(product)" (keydown.enter)="openProductDetails(product)" (keydown.space)="openProductDetails(product); $event.preventDefault()" [attr.aria-label]="'Voir le détail de ' + product.name">
                 <img [src]="product.imageUrl" [alt]="product.name" loading="lazy">
                 @if (product.featured) { <span class="product-tag">COUP DE CŒUR</span> }
                 @if (product.stockQuantity === 0) { <span class="product-stock-out">Indisponible</span> }
@@ -66,7 +66,7 @@ interface CartLine extends CartItem {
               <div class="product-info">
                 <div>
                   @if (product.brand) { <p class="product-brand">{{ product.brand }}</p> }
-                  <h2>{{ product.name }}</h2>
+                  <h2><button class="product-title-trigger" type="button" (click)="openProductDetails(product)">{{ product.name }}</button></h2>
                   <p>{{ product.category }}{{ product.productFormat ? ' · ' + product.productFormat : '' }}</p>
                 </div>
                 <div class="product-prices">
@@ -91,6 +91,44 @@ interface CartLine extends CartItem {
       }
     } @else {
       <p class="shop-state" role="status">Chargement de la boutique…</p>
+    }
+
+    @if (selectedProduct; as product) {
+      <div class="product-detail-overlay" (click)="closeProductDetails()">
+        <section class="product-detail-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'Détail du produit ' + product.name" (click)="$event.stopPropagation()">
+          <button class="lightbox-close" type="button" (click)="closeProductDetails()" aria-label="Fermer le détail du produit">×</button>
+          <div class="product-detail-image">
+            <img [src]="product.imageUrl" [alt]="product.name">
+            @if (product.featured) { <span class="product-tag">COUP DE CŒUR</span> }
+            @if (product.stockQuantity === 0) { <span class="product-stock-out">Indisponible</span> }
+          </div>
+          <div class="product-detail-content">
+            <div class="product-detail-heading">
+              <div class="product-detail-title">
+                <p class="eyebrow">LA SÉLECTION DU SALON</p>
+                @if (product.brand) { <p class="product-brand">{{ product.brand }}</p> }
+                <h2>{{ product.name }}</h2>
+                <p>{{ product.category }}{{ product.productFormat ? ' · ' + product.productFormat : '' }}</p>
+                @if (product.sku) { <small>Réf. {{ product.sku }}</small> }
+              </div>
+              <div class="product-detail-prices">
+                @if (product.promotionPrice !== null) { <del>{{ product.price | currency:'EUR':'symbol':'1.2-2':'fr-FR' }}</del> }
+                <strong [class.product-promo-price]="product.promotionPrice !== null">{{ (product.promotionPrice ?? product.price) | currency:'EUR':'symbol':'1.2-2':'fr-FR' }}</strong>
+              </div>
+            </div>
+            @if (cartError) { <p class="admin-error product-detail-error" role="alert">{{ cartError }}</p> }
+            <div class="product-detail-bottom">
+              @if (product.description) { <p class="product-detail-description">{{ product.description }}</p> }
+              @if (product.stockQuantity === 0) {
+                <span class="product-unavailable-note">Ce produit n’est pas disponible pour le moment.</span>
+              } @else {
+                <button class="shop-add-button" type="button" (click)="addProductFromDetails(product)">Ajouter au panier</button>
+                <a class="text-link" [href]="contactLink(product)">{{ 'Une question sur ce produit ? Nous contacter' }} <span>↗</span></a>
+              }
+            </div>
+          </div>
+        </section>
+      </div>
     }
 
     @if (isCartOpen) {
@@ -172,7 +210,7 @@ interface CartLine extends CartItem {
     <section class="shop-note"><p>Une question sur votre routine ?</p><a class="text-link" href="mailto:bonjour@urbanhair.fr">Pauline vous conseille au salon <span>↗</span></a></section>
   `
 })
-export class ShopComponent implements OnInit {
+export class ShopComponent implements OnInit, OnDestroy {
   private readonly catalog = inject(CatalogService);
   private readonly checkoutService = inject(CheckoutService);
   private readonly route = inject(ActivatedRoute);
@@ -191,6 +229,8 @@ export class ShopComponent implements OnInit {
   checkoutError = '';
   checkoutMessage = '';
   cartError = '';
+  selectedProduct: Product | null = null;
+  private previousBodyOverflow = '';
   private checkoutFingerprint = '';
   private checkoutIdempotencyKey = '';
 
@@ -272,6 +312,36 @@ export class ShopComponent implements OnInit {
         this.checkoutMessage = 'Le paiement a été interrompu. Votre panier est conservé.';
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.selectedProduct) document.body.style.overflow = this.previousBodyOverflow;
+  }
+
+  openProductDetails(product: Product): void {
+    this.cartError = '';
+    this.cart.closePanel();
+    this.previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    this.selectedProduct = product;
+  }
+
+  closeProductDetails(): void {
+    this.selectedProduct = null;
+    document.body.style.overflow = this.previousBodyOverflow;
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onProductDetailsKeydown(event: KeyboardEvent): void {
+    if (this.selectedProduct && event.key === 'Escape') {
+      this.closeProductDetails();
+      event.preventDefault();
+    }
+  }
+
+  addProductFromDetails(product: Product): void {
+    this.addToCart(product);
+    if (!this.cartError) this.closeProductDetails();
   }
 
   addToCart(product: Product): void {

@@ -26,7 +26,7 @@ import { Component } from '@angular/core';
           rel="noopener noreferrer"
         >
           <span class="contact-icon" aria-hidden="true">⌖</span>
-          <span><small>Adresse</small><strong>Sainte-Catherine-de-Fierbois</strong></span>
+          <span><small>Adresse</small><strong>53 ter Rue Boucicault, 37800 Sainte-Catherine-de-Fierbois</strong></span>
         </a>
 
         <p class="contact-appointment">Le salon vous reçoit sur rendez-vous.</p>
